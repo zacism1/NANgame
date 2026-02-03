@@ -398,3 +398,77 @@ canvas {
     flex: 1 1 200px;
   }
 }
+
+@media (max-width: 720px) {
+  .page {
+    padding: 18px 14px 28px;
+  }
+
+  .topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .stats {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .stat {
+    min-width: 80px;
+    flex: 1 1 80px;
+  }
+
+  .canvas-wrap {
+    padding: 10px;
+  }
+
+  .hint {
+    font-size: 11px;
+  }
+
+  .panel {
+    flex-direction: column;
+    padding: 12px;
+  }
+
+  .panel-block {
+    flex: 1 1 auto;
+  }
+
+  .tower-btn {
+    padding: 10px;
+  }
+
+  .menu-card {
+    padding: 18px;
+  }
+}
+
+@media (max-width: 520px) {
+  .brand {
+    font-size: 22px;
+  }
+
+  .sub {
+    font-size: 12px;
+  }
+
+  .stat strong {
+    font-size: 18px;
+  }
+
+  .menu-card h1 {
+    font-size: 24px;
+  }
+
+  .menu-actions {
+    flex-direction: column;
+  }
+
+  .action,
+  .chip,
+  .ghost {
+    width: 100%;
+  }
+}
