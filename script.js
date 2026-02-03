@@ -611,7 +611,9 @@ function handleWin() {
   renderLevels();
   showPopup(
     "Level Cleared!",
-    levels[nextLevel] ? "Next level unlocked. Ready for the next challenge?" : "You beat all levels! Want to replay?"
+    levels[nextLevel]
+      ? "Next level unlocked. Click Choose Next Level to pick it from the menu."
+      : "You beat all levels! Click Choose Next Level to replay any stage."
   );
 }
 
@@ -783,7 +785,7 @@ function drawEnemies() {
   for (const enemy of enemies) {
     ctx.save();
     ctx.translate(enemy.x, enemy.y);
-    const size = enemy.radius * 2.2;
+    const size = enemy.radius * 2.64;
     if (enemyImage.complete && enemyImage.naturalWidth > 0) {
       ctx.drawImage(enemyImage, -size / 2, -size / 2, size, size);
     } else {
@@ -792,12 +794,6 @@ function drawEnemies() {
       ctx.arc(0, 0, enemy.radius, 0, Math.PI * 2);
       ctx.fill();
     }
-    const ringColor = enemyTypes[enemy.kind]?.ring || "#f6f1e8";
-    ctx.strokeStyle = ringColor;
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(0, 0, enemy.radius + 4, 0, Math.PI * 2);
-    ctx.stroke();
     ctx.restore();
 
     const barWidth = 40;
@@ -1010,6 +1006,7 @@ function selectPlacedTower(tower) {
 
 function renderLevels() {
   ui.levelList.innerHTML = "";
+  setMenuMessage("Select a level, then click Start Level.");
   levels.forEach((level, index) => {
     const card = document.createElement("div");
     card.className = "level-card";
