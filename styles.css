@@ -1,13 +1,13 @@
 :root {
-  --bg: #0f1417;
-  --panel: #1c242a;
-  --panel-2: #11181c;
-  --accent: #f5b12e;
-  --accent-2: #ff6b3d;
-  --text: #f6f1e8;
-  --muted: #a7b0b6;
-  --path: #3a2c20;
-  --grass: #1d2b24;
+  --bg: #0c1118;
+  --panel: #18212b;
+  --panel-2: #0f151d;
+  --accent: #56c3ff;
+  --accent-2: #7c5cff;
+  --text: #f4f7fb;
+  --muted: #9fb0c2;
+  --path: #223041;
+  --grass: #101b24;
   --grid: rgba(255, 255, 255, 0.06);
 }
 
@@ -20,9 +20,10 @@ body {
   font-family: "Space Grotesk", "Eurostile", "Trebuchet MS", sans-serif;
   color: var(--text);
   background:
-    radial-gradient(circle at 20% 20%, rgba(255, 107, 61, 0.18), transparent 50%),
-    radial-gradient(circle at 80% 10%, rgba(245, 177, 46, 0.2), transparent 45%),
-    linear-gradient(160deg, #0f1417 0%, #0b0f12 100%);
+    radial-gradient(circle at 18% 10%, rgba(86, 195, 255, 0.22), transparent 48%),
+    radial-gradient(circle at 85% 5%, rgba(124, 92, 255, 0.2), transparent 45%),
+    radial-gradient(circle at 70% 80%, rgba(0, 255, 198, 0.12), transparent 55%),
+    linear-gradient(160deg, #0c1118 0%, #090d12 100%);
   min-height: 100vh;
 }
 
