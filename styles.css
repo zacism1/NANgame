@@ -132,6 +132,42 @@ canvas {
   display: none;
 }
 
+.popup {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 8, 10, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9;
+}
+
+.popup.hidden {
+  display: none;
+}
+
+.popup-card {
+  background: linear-gradient(140deg, rgba(28, 36, 42, 0.95), rgba(12, 16, 18, 0.95));
+  border-radius: 16px;
+  padding: 22px 24px;
+  min-width: 280px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+}
+
+.popup-title {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+
+.popup-body {
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
 .menu-card {
   background: linear-gradient(155deg, rgba(28, 36, 42, 0.92), rgba(14, 19, 22, 0.92));
   border-radius: 18px;
