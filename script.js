@@ -21,6 +21,10 @@ const ui = {
   upgradeStats: document.getElementById("upgradeStats"),
   upgradeBtn: document.getElementById("upgradeBtn"),
   sellBtn: document.getElementById("sellBtn"),
+  popup: document.getElementById("popup"),
+  popupTitle: document.getElementById("popupTitle"),
+  popupBody: document.getElementById("popupBody"),
+  popupClose: document.getElementById("popupClose"),
 };
 
 const gridSize = 40;
@@ -158,6 +162,9 @@ const enemyTypes = {
 
 const enemyImage = new Image();
 enemyImage.src = "assets/enemy.png";
+enemyImage.onerror = () => {
+  setMenuMessage("Enemy image missing. Check assets/enemy.png.");
+};
 
 let pathPoints = levels[0].path;
 let money = levels[0].cash;
@@ -177,6 +184,8 @@ const enemies = [];
 const bullets = [];
 const effects = [];
 const zaps = [];
+const flashes = [];
+const smokes = [];
 
 const waves = [];
 let waveInProgress = false;
@@ -242,6 +251,16 @@ function saveUnlocks() {
 
 function setMenuMessage(text) {
   ui.menuMessage.textContent = text || "";
+}
+
+function showPopup(title, body) {
+  ui.popupTitle.textContent = title;
+  ui.popupBody.textContent = body;
+  ui.popup.classList.remove("hidden");
+}
+
+function hidePopup() {
+  ui.popup.classList.add("hidden");
 }
 
 function buildWave(number) {
@@ -342,6 +361,7 @@ function placeTower(x, y) {
     type: selectedTower,
     cooldown: 0,
     level: 0,
+    angle: 0,
   });
   money -= type.cost;
   updateUI();
@@ -448,6 +468,8 @@ function updateTowers(dt) {
       if (type.beam) {
         const targets = findTargets(tower, type.chain || 1);
         if (targets.length) {
+          const angle = Math.atan2(targets[0].y - tower.y, targets[0].x - tower.x);
+          tower.angle = angle;
           targets.forEach((enemy) => {
             applyDamage(enemy, type.damage);
             zaps.push({
@@ -465,14 +487,31 @@ function updateTowers(dt) {
         const target = findTargets(tower, 1)[0];
         if (target) {
           const angle = Math.atan2(target.y - tower.y, target.x - tower.x);
+          tower.angle = angle;
+          const barrel = tower.type === "sniper" ? 22 : tower.type === "cannon" ? 18 : 16;
+          const spawnX = tower.x + Math.cos(angle) * barrel;
+          const spawnY = tower.y + Math.sin(angle) * barrel;
+          flashes.push({ x: spawnX, y: spawnY, angle, alpha: 1, size: tower.type === "cannon" ? 12 : 8 });
+          for (let i = 0; i < (tower.type === "cannon" ? 6 : 3); i++) {
+            smokes.push({
+              x: spawnX + (Math.random() - 0.5) * 6,
+              y: spawnY + (Math.random() - 0.5) * 6,
+              vx: (Math.random() - 0.5) * 8,
+              vy: -10 - Math.random() * 10,
+              alpha: 0.6,
+              radius: 4 + Math.random() * 4,
+            });
+          }
           bullets.push({
-            x: tower.x,
-            y: tower.y,
+            x: spawnX,
+            y: spawnY,
             vx: Math.cos(angle) * type.bulletSpeed,
             vy: Math.sin(angle) * type.bulletSpeed,
             damage: type.damage,
             splash: type.splash || 0,
             color: type.color,
+            kind: tower.type,
+            gravity: tower.type === "cannon" ? 220 : 0,
           });
           if (tower.type === "cannon") playSound("cannon");
           else if (tower.type === "sniper") playSound("sniper");
@@ -500,6 +539,9 @@ function applyDamage(enemy, amount) {
 function updateBullets(dt) {
   for (let i = bullets.length - 1; i >= 0; i--) {
     const bullet = bullets[i];
+    if (bullet.gravity) {
+      bullet.vy += bullet.gravity * dt;
+    }
     bullet.x += bullet.vx * dt;
     bullet.y += bullet.vy * dt;
 
@@ -521,6 +563,9 @@ function updateBullets(dt) {
     }
 
     if (hit || bullet.x < -50 || bullet.x > map.width + 50 || bullet.y < -50 || bullet.y > map.height + 50) {
+      if (bullet.kind === "cannon") {
+        effects.push({ x: bullet.x, y: bullet.y, radius: 8, alpha: 1 });
+      }
       bullets.splice(i, 1);
     }
   }
@@ -539,6 +584,21 @@ function updateEffects(dt) {
     zap.alpha -= 2.2 * dt;
     if (zap.alpha <= 0) zaps.splice(i, 1);
   }
+
+  for (let i = flashes.length - 1; i >= 0; i--) {
+    const flash = flashes[i];
+    flash.alpha -= 6 * dt;
+    if (flash.alpha <= 0) flashes.splice(i, 1);
+  }
+
+  for (let i = smokes.length - 1; i >= 0; i--) {
+    const puff = smokes[i];
+    puff.x += puff.vx * dt;
+    puff.y += puff.vy * dt;
+    puff.alpha -= 1.2 * dt;
+    puff.radius += 8 * dt;
+    if (puff.alpha <= 0) smokes.splice(i, 1);
+  }
 }
 
 function handleWin() {
@@ -549,7 +609,10 @@ function handleWin() {
   }
   setMenuMessage(`Level cleared! ${levels[nextLevel] ? "Next level unlocked." : "You beat all levels!"}`);
   renderLevels();
-  setGameState("menu");
+  showPopup(
+    "Level Cleared!",
+    levels[nextLevel] ? "Next level unlocked. Ready for the next challenge?" : "You beat all levels! Want to replay?"
+  );
 }
 
 function updateSpawn(dt) {
@@ -631,21 +694,80 @@ function drawPath() {
 function drawTowers() {
   for (const tower of towers) {
     const type = getTowerStats(tower);
+    const angle = tower.angle || 0;
+    const level = tower.level || 0;
+    const sizeBoost = 1 + level * 0.08;
     ctx.fillStyle = "rgba(0,0,0,0.35)";
     ctx.beginPath();
-    ctx.ellipse(tower.x + 6, tower.y + 8, 18, 10, 0, 0, Math.PI * 2);
+    ctx.ellipse(tower.x + 6, tower.y + 8, 18 * sizeBoost, 10 * sizeBoost, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = type.color;
-    ctx.strokeStyle = "#101416";
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(tower.x, tower.y, 16, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    ctx.save();
+    ctx.translate(tower.x, tower.y);
+    ctx.rotate(angle);
 
-    ctx.fillStyle = "#101416";
-    ctx.fillRect(tower.x - 6, tower.y - 4, 12, 10);
+    if (tower.type === "cannon") {
+      ctx.fillStyle = type.color;
+      ctx.strokeStyle = "#101416";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, 18 * sizeBoost, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+
+      ctx.fillStyle = "#101416";
+      ctx.fillRect(-6, -6, 26 * sizeBoost, 12 * sizeBoost);
+      ctx.fillStyle = "#2f1a12";
+      ctx.fillRect(10, -4, 18 * sizeBoost, 8 * sizeBoost);
+    } else if (tower.type === "sniper") {
+      ctx.fillStyle = type.color;
+      ctx.strokeStyle = "#0b0f12";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, 14 * sizeBoost, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#0b0f12";
+      ctx.fillRect(-4, -4, 30 * sizeBoost, 8 * sizeBoost);
+      ctx.fillStyle = "#334155";
+      ctx.fillRect(18, -2, 16 * sizeBoost, 4 * sizeBoost);
+    } else if (tower.type === "tesla") {
+      ctx.fillStyle = type.color;
+      ctx.strokeStyle = "#101416";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, 16 * sizeBoost, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = "#c084fc";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-4 * sizeBoost, -8 * sizeBoost);
+      ctx.lineTo(8 * sizeBoost, 8 * sizeBoost);
+      ctx.moveTo(4 * sizeBoost, -8 * sizeBoost);
+      ctx.lineTo(-8 * sizeBoost, 8 * sizeBoost);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = type.color;
+      ctx.strokeStyle = "#101416";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, 16 * sizeBoost, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = "#101416";
+      ctx.fillRect(-6, -4, 22 * sizeBoost, 8 * sizeBoost);
+    }
+
+    if (level > 0) {
+      ctx.strokeStyle = `rgba(245, 177, 46, ${0.15 + level * 0.1})`;
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(0, 0, 22 * sizeBoost, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.restore();
 
     if (tower === selectedPlacedTower) {
       ctx.strokeStyle = type.color;
@@ -689,10 +811,30 @@ function drawEnemies() {
 
 function drawBullets() {
   for (const bullet of bullets) {
-    ctx.fillStyle = bullet.color;
-    ctx.beginPath();
-    ctx.arc(bullet.x, bullet.y, bullet.splash ? 5 : 3, 0, Math.PI * 2);
-    ctx.fill();
+    if (bullet.kind === "cannon") {
+      ctx.fillStyle = "#3b2f2a";
+      ctx.beginPath();
+      ctx.arc(bullet.x, bullet.y, 6, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = "#f5b12e";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(bullet.x - bullet.vx * 0.02, bullet.y - bullet.vy * 0.02);
+      ctx.lineTo(bullet.x - bullet.vx * 0.08, bullet.y - bullet.vy * 0.08);
+      ctx.stroke();
+    } else if (bullet.kind === "sniper") {
+      ctx.strokeStyle = "#7dd3fc";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(bullet.x, bullet.y);
+      ctx.lineTo(bullet.x - bullet.vx * 0.04, bullet.y - bullet.vy * 0.04);
+      ctx.stroke();
+    } else {
+      ctx.fillStyle = bullet.color;
+      ctx.beginPath();
+      ctx.arc(bullet.x, bullet.y, bullet.splash ? 5 : 3, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 }
 
@@ -712,6 +854,28 @@ function drawEffects() {
     ctx.moveTo(zap.x1, zap.y1);
     ctx.lineTo(zap.x2, zap.y2);
     ctx.stroke();
+  }
+
+  for (const flash of flashes) {
+    ctx.save();
+    ctx.translate(flash.x, flash.y);
+    ctx.rotate(flash.angle);
+    ctx.globalAlpha = flash.alpha;
+    ctx.fillStyle = "#f5b12e";
+    ctx.beginPath();
+    ctx.moveTo(0, -flash.size * 0.4);
+    ctx.lineTo(flash.size * 1.6, 0);
+    ctx.lineTo(0, flash.size * 0.4);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+
+  for (const puff of smokes) {
+    ctx.fillStyle = `rgba(180, 180, 180, ${puff.alpha})`;
+    ctx.beginPath();
+    ctx.arc(puff.x, puff.y, puff.radius, 0, Math.PI * 2);
+    ctx.fill();
   }
 }
 
@@ -803,7 +967,10 @@ function resetGame(levelIndex) {
   waveInProgress = false;
   enemiesToSpawn = 0;
   spawnTimer = 0;
+  flashes.length = 0;
+  smokes.length = 0;
   selectedPlacedTower = null;
+  hidePopup();
   updateUpgradePanel();
   updateUI();
   setMenuMessage("");
@@ -950,6 +1117,12 @@ ui.openMenu.addEventListener("click", () => {
   setGameState("paused");
 });
 
+ui.popupClose.addEventListener("click", () => {
+  initAudio();
+  hidePopup();
+  setGameState("menu");
+});
+
 ui.startGame.addEventListener("click", () => {
   initAudio();
   if (!unlockedLevels[currentLevel]) {
@@ -958,6 +1131,7 @@ ui.startGame.addEventListener("click", () => {
   }
   resetGame(currentLevel);
   ui.pause.textContent = "Pause";
+  hidePopup();
   setGameState("playing");
 });
 
