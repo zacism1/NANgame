@@ -1,4 +1,3 @@
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -25,6 +24,13 @@
       <div class="canvas-wrap">
         <canvas id="game" width="960" height="540"></canvas>
         <div class="hint" id="hint">Select a tower and click the grass to place it.</div>
+        <div class="popup hidden" id="popup">
+          <div class="popup-card">
+            <div class="popup-title" id="popupTitle">Level Cleared!</div>
+            <div class="popup-body" id="popupBody">You finished the level.</div>
+            <button id="popupClose" class="action">Continue</button>
+          </div>
+        </div>
         <div class="menu" id="menu">
           <div class="menu-card">
             <h1>Face Siege TD</h1>
