@@ -46,6 +46,7 @@ const levels = [
       path: "#3a2c20",
       grid: "rgba(255,255,255,0.04)",
       glow: "rgba(245, 177, 46, 0.08)",
+      style: "industrial",
     },
     path: [
       { x: -40, y: 280 },
@@ -70,6 +71,7 @@ const levels = [
       path: "#2c3b4a",
       grid: "rgba(160, 200, 255, 0.06)",
       glow: "rgba(125, 211, 252, 0.12)",
+      style: "futuristic",
     },
     path: [
       { x: -40, y: 120 },
@@ -96,6 +98,7 @@ const levels = [
       path: "#4a2f24",
       grid: "rgba(255, 190, 130, 0.06)",
       glow: "rgba(255, 107, 61, 0.12)",
+      style: "industrial",
     },
     path: [
       { x: -40, y: 320 },
@@ -154,10 +157,10 @@ const towerTypes = {
 };
 
 const enemyTypes = {
-  normal: { name: "Normal", hp: 1, speed: 1, radius: 20, bounty: 1, ring: "#f6f1e8" },
-  fast: { name: "Fast", hp: 0.7, speed: 1.45, radius: 16, bounty: 0.9, ring: "#7dd3fc" },
-  tank: { name: "Tank", hp: 2.2, speed: 0.75, radius: 24, bounty: 1.4, ring: "#f59e0b" },
-  boss: { name: "Boss", hp: 6.0, speed: 0.6, radius: 32, bounty: 4.0, ring: "#a855f7" },
+  normal: { name: "Normal", hp: 1, speed: 1, radius: 20, bounty: 1 },
+  fast: { name: "Fast", hp: 0.7, speed: 1.45, radius: 16, bounty: 0.9 },
+  tank: { name: "Tank", hp: 2.2, speed: 0.75, radius: 24, bounty: 1.4 },
+  boss: { name: "Boss", hp: 7.5, speed: 0.55, radius: 60, bounty: 5.0 },
 };
 
 const enemyImage = new Image();
@@ -268,7 +271,9 @@ function buildWave(number) {
   const count = Math.floor(6 + number * 2.6 * levelBoost);
   const health = Math.floor(40 + number * 20 * levelBoost);
   const speed = 40 + number * 2 + currentLevel * 4;
-  const bossCount = number % 5 === 0 ? 1 : 0;
+  let bossCount = number % 5 === 0 ? 1 : 0;
+  if (number % 5 === 0 && currentLevel >= 1) bossCount += 1;
+  if (number % 5 === 0 && currentLevel >= 2) bossCount += 1;
   return { count, health, speed, bounty: 12 + number * 2, bossCount };
 }
 
@@ -664,9 +669,35 @@ function drawBackground() {
   ctx.fillStyle = gradient;
   ctx.fillRect(0, 0, map.width, map.height);
 
-  ctx.fillStyle = "rgba(255,255,255,0.03)";
-  for (let x = 0; x < map.width; x += 120) {
-    ctx.fillRect(x, 0, 30, map.height);
+  if (currentTheme.style === "industrial") {
+    ctx.fillStyle = "rgba(255,255,255,0.035)";
+    for (let x = 0; x < map.width; x += 110) {
+      ctx.fillRect(x, 0, 28, map.height);
+    }
+    ctx.strokeStyle = "rgba(0,0,0,0.25)";
+    ctx.lineWidth = 2;
+    for (let y = 40; y < map.height; y += 120) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(map.width, y);
+      ctx.stroke();
+    }
+  } else {
+    ctx.strokeStyle = "rgba(120, 200, 255, 0.12)";
+    ctx.lineWidth = 1;
+    for (let x = 0; x < map.width; x += 80) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x + 40, map.height);
+      ctx.stroke();
+    }
+    ctx.strokeStyle = "rgba(124, 92, 255, 0.1)";
+    for (let y = 0; y < map.height; y += 70) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(map.width, y + 30);
+      ctx.stroke();
+    }
   }
 }
 
@@ -893,6 +924,18 @@ function drawPlacement(mouse) {
   ctx.restore();
 }
 
+function drawPlacementGrid() {
+  if (!selectedTower) return;
+  for (let y = gridSize / 2; y < map.height; y += gridSize) {
+    for (let x = gridSize / 2; x < map.width; x += gridSize) {
+      const blocked = isOnPath(x, y) || isOccupied(x, y);
+      ctx.strokeStyle = blocked ? "rgba(255, 80, 80, 0.45)" : "rgba(80, 220, 120, 0.35)";
+      ctx.lineWidth = 1;
+      ctx.strokeRect(x - gridSize / 2 + 2, y - gridSize / 2 + 2, gridSize - 4, gridSize - 4);
+    }
+  }
+}
+
 function drawPaused() {
   if (gameState !== "paused") return;
   ctx.save();
@@ -916,6 +959,7 @@ function update(timestamp) {
   drawBackground();
   drawPath();
   drawGrid();
+  drawPlacementGrid();
 
   if (gameState === "playing") {
     updateSpawn(dt);
