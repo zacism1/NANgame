@@ -146,15 +146,16 @@ const towerTypes = {
     bulletSpeed: 520,
     color: "#7dd3fc",
   },
-  tesla: {
-    name: "Tesla",
+  cryo: {
+    name: "Cryo Tower",
     cost: 140,
-    range: 140,
-    fireRate: 0.7,
-    damage: 18,
-    chain: 3,
-    color: "#a855f7",
-    beam: true,
+    range: 150,
+    fireRate: 0.8,
+    damage: 6,
+    bulletSpeed: 360,
+    color: "#7cddff",
+    slow: 0.5,
+    slowDuration: 2.8,
   },
 };
 
@@ -230,6 +231,17 @@ const i18n = {
     tipsTitle: "Tips",
     tips1: "Place towers along the path curves for maximum coverage.",
     tips2: "Gun towers are best for early waves. Cannons handle clusters.",
+    towers: {
+      gun: { name: "Gun", desc: "Fast fire, light damage" },
+      cannon: { name: "Cannon", desc: "Slow fire, splash damage" },
+      sniper: { name: "Sniper", desc: "Long range, huge damage" },
+      cryo: { name: "Cryo Tower", desc: "Slows enemies by 50%" },
+    },
+    levels: [
+      { name: "Harbor Bend", desc: "A twisting middle path with long sightlines." },
+      { name: "Forked Road", desc: "A double-back path that crowds the center." },
+      { name: "Canyon Run", desc: "Shorter path, faster waves." },
+    ],
     chooseLevel: "Choose Level",
     menuNote: "Audio activates after your first click. Shortcuts: Space = wave, U = upgrade.",
     rotate: "Please rotate your phone to landscape.",
@@ -278,6 +290,17 @@ const i18n = {
     tipsTitle: "เคล็ดลับ",
     tips1: "วางป้อมตามโค้งเพื่อโจมตีได้นานขึ้น",
     tips2: "ปืนเหมาะกับต้นเกม ปืนใหญ่เหมาะกับกลุ่มศัตรู",
+    towers: {
+      gun: { name: "ปืนกล", desc: "ยิงเร็ว ดาเมจเบา" },
+      cannon: { name: "ปืนใหญ่", desc: "ยิงช้า ดาเมจหมู่" },
+      sniper: { name: "สไนเปอร์", desc: "ระยะไกล ดาเมจสูง" },
+      cryo: { name: "ป้อมเยือกแข็ง", desc: "ทำให้ศัตรูช้าลง 50%" },
+    },
+    levels: [
+      { name: "โค้งท่าเรือ", desc: "ทางคดเคี้ยว ยิงได้ไกล" },
+      { name: "ทางแยก", desc: "ทางวกกลับ หนาแน่นตรงกลาง" },
+      { name: "หุบเขา", desc: "ทางสั้น คลื่นเร็ว" },
+    ],
     chooseLevel: "เลือกด่าน",
     menuNote: "เสียงจะเริ่มหลังคลิกครั้งแรก ปุ่มลัด: Space=เริ่มรอบ, U=อัปเกรด",
     rotate: "โปรดหมุนหน้าจอเป็นแนวนอน",
@@ -396,15 +419,24 @@ function applyLanguage() {
   document.querySelectorAll(".stats .stat span")[2].textContent = t.wave;
   document.querySelectorAll(".panel-block.small p")[0].textContent = t.tips1;
   document.querySelectorAll(".panel-block.small p")[1].textContent = t.tips2;
+  ui.towerButtons.forEach((button) => {
+    const key = button.dataset.tower;
+    const nameEl = button.querySelector(".tower-name");
+    const descEl = button.querySelector(".tower-desc");
+    if (t.towers[key]) {
+      nameEl.textContent = t.towers[key].name;
+      descEl.textContent = t.towers[key].desc;
+    }
+  });
   document.querySelectorAll(".row span")[0].textContent = t.speed;
   document.querySelectorAll(".row span")[1].textContent = t.pause;
-  ui.popupTitle.textContent = t.popupTitle;
-  ui.popupClose.textContent = t.popupButton;
-  ui.rotatePrompt.querySelector(".rotate-card").textContent = t.rotate;
-  ui.langPrompt.querySelector(".lang-title").textContent = t.langTitle;
-  setMenuMessage(t.menuMessage);
-  setHint(t.hintPlace);
-  updateUpgradePanel();
+ui.popupTitle.textContent = t.popupTitle;
+ui.popupClose.textContent = t.popupButton;
+ui.rotatePrompt.querySelector(".rotate-card").textContent = t.rotate;
+ui.langPrompt.querySelector(".lang-title").textContent = t.langTitle;
+setMenuMessage(t.menuMessage);
+setHint(t.hintPlace);
+updateUpgradePanel();
 }
 
 function showPopup(title, body) {
@@ -482,6 +514,8 @@ function getTowerStats(tower) {
     fireRate,
     bulletSpeed,
     chain: base.chain || 0,
+    slow: base.slow || 0,
+    slowDuration: base.slowDuration || 0,
   };
 }
 
@@ -568,6 +602,8 @@ function spawnEnemy() {
     waypoint: 1,
     radius: type.radius,
     kind,
+    slowFactor: 1,
+    slowTimer: 0,
   };
   enemies.push(enemy);
 }
@@ -575,6 +611,12 @@ function spawnEnemy() {
 function updateEnemies(dt) {
   for (let i = enemies.length - 1; i >= 0; i--) {
     const enemy = enemies[i];
+    if (enemy.slowTimer && enemy.slowTimer > 0) {
+      enemy.slowTimer -= dt;
+      if (enemy.slowTimer <= 0) {
+        enemy.slowFactor = 1;
+      }
+    }
     const target = pathPoints[enemy.waypoint];
     if (!target) {
       enemies.splice(i, 1);
@@ -599,8 +641,9 @@ function updateEnemies(dt) {
       }
       continue;
     }
-    const vx = (dx / dist) * enemy.speed * dt;
-    const vy = (dy / dist) * enemy.speed * dt;
+    const slow = enemy.slowFactor || 1;
+    const vx = (dx / dist) * enemy.speed * slow * dt;
+    const vy = (dy / dist) * enemy.speed * slow * dt;
     enemy.x += vx;
     enemy.y += vy;
   }
@@ -668,6 +711,8 @@ function updateTowers(dt) {
             color: type.color,
             kind: tower.type,
             gravity: tower.type === "cannon" ? 220 : 0,
+            slow: type.slow || 0,
+            slowDuration: type.slowDuration || 0,
           });
           if (tower.type === "cannon") playSound("cannon");
           else if (tower.type === "sniper") playSound("sniper");
@@ -692,6 +737,12 @@ function applyDamage(enemy, amount) {
   }
 }
 
+function applySlow(enemy, slowFactor, duration) {
+  if (!slowFactor || !duration) return;
+  enemy.slowTimer = Math.max(enemy.slowTimer || 0, duration);
+  enemy.slowFactor = Math.min(enemy.slowFactor || 1, slowFactor);
+}
+
 function updateBullets(dt) {
   for (let i = bullets.length - 1; i >= 0; i--) {
     const bullet = bullets[i];
@@ -708,10 +759,12 @@ function updateBullets(dt) {
           for (const near of enemies) {
             if (Math.hypot(near.x - bullet.x, near.y - bullet.y) <= bullet.splash) {
               applyDamage(near, bullet.damage);
+              applySlow(near, bullet.slow, bullet.slowDuration);
             }
           }
         } else {
           applyDamage(enemy, bullet.damage);
+          applySlow(enemy, bullet.slow, bullet.slowDuration);
         }
         hit = true;
         break;
@@ -913,7 +966,7 @@ function drawTowers() {
       ctx.fillRect(-4, -4, 30 * sizeBoost, 8 * sizeBoost);
       ctx.fillStyle = "#334155";
       ctx.fillRect(18, -2, 16 * sizeBoost, 4 * sizeBoost);
-    } else if (tower.type === "tesla") {
+    } else if (tower.type === "cryo") {
       ctx.fillStyle = type.color;
       ctx.strokeStyle = "#101416";
       ctx.lineWidth = 3;
@@ -921,13 +974,13 @@ function drawTowers() {
       ctx.arc(0, 0, 16 * sizeBoost, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
-      ctx.strokeStyle = "#c084fc";
+      ctx.strokeStyle = "#b6f1ff";
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.moveTo(-4 * sizeBoost, -8 * sizeBoost);
-      ctx.lineTo(8 * sizeBoost, 8 * sizeBoost);
-      ctx.moveTo(4 * sizeBoost, -8 * sizeBoost);
-      ctx.lineTo(-8 * sizeBoost, 8 * sizeBoost);
+      ctx.moveTo(-6 * sizeBoost, -8 * sizeBoost);
+      ctx.lineTo(10 * sizeBoost, 6 * sizeBoost);
+      ctx.moveTo(6 * sizeBoost, -8 * sizeBoost);
+      ctx.lineTo(-10 * sizeBoost, 6 * sizeBoost);
       ctx.stroke();
     } else {
       ctx.fillStyle = type.color;
@@ -1179,7 +1232,9 @@ function updateUpgradePanel() {
   const level = selectedPlacedTower.level || 0;
   empty.classList.add("hidden");
   details.classList.remove("hidden");
-  ui.upgradeName.textContent = `${towerTypes[selectedPlacedTower.type].name} Lv.${level + 1}`;
+  const towerText = i18n[currentLang].towers[selectedPlacedTower.type];
+  const baseName = towerText ? towerText.name : towerTypes[selectedPlacedTower.type].name;
+  ui.upgradeName.textContent = `${baseName} Lv.${level + 1}`;
   ui.upgradeStats.textContent = `Damage ${type.damage.toFixed(0)} | Range ${type.range.toFixed(0)} | Rate ${type.fireRate.toFixed(2)}s`;
   if (maxLevelReached(selectedPlacedTower)) {
     ui.upgradeBtn.textContent = i18n[currentLang].maxLevel;
@@ -1202,14 +1257,15 @@ function renderLevels() {
   ui.levelList.innerHTML = "";
   setMenuMessage(i18n[currentLang].menuMessage);
   levels.forEach((level, index) => {
+    const levelText = i18n[currentLang].levels[index] || { name: level.name, desc: level.desc };
     const card = document.createElement("div");
     card.className = "level-card";
     const locked = !unlockedLevels[index];
     if (index === currentLevel && !locked) card.classList.add("active");
     if (locked) card.classList.add("locked");
     card.innerHTML = `
-      <div class="level-name">${level.name}</div>
-      <div class="level-desc">${locked ? "Locked. Clear previous level." : level.desc}</div>
+      <div class="level-name">${levelText.name}</div>
+      <div class="level-desc">${locked ? i18n[currentLang].menuLocked : levelText.desc}</div>
     `;
     if (!locked) {
       card.addEventListener("click", () => {
@@ -1359,8 +1415,10 @@ ui.towerButtons.forEach((button) => {
     selectedTower = button.dataset.tower;
     selectedPlacedTower = null;
     updateUpgradePanel();
-    const type = towerTypes[selectedTower];
-    setHint(`${i18n[currentLang].hintPlace} (${type.name} $${type.cost})`);
+  const type = towerTypes[selectedTower];
+  const towerText = i18n[currentLang].towers[selectedTower];
+  const towerName = towerText ? towerText.name : type.name;
+  setHint(`${i18n[currentLang].hintPlace} (${towerName} $${type.cost})`);
   });
 });
 
