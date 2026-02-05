@@ -133,6 +133,45 @@ canvas {
   display: none;
 }
 
+.lang,
+.rotate {
+  position: absolute;
+  inset: 0;
+  background: rgba(6, 8, 10, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 12;
+}
+
+.lang.hidden,
+.rotate.hidden {
+  display: none;
+}
+
+.lang-card,
+.rotate-card {
+  background: linear-gradient(140deg, rgba(28, 36, 42, 0.95), rgba(12, 16, 18, 0.95));
+  border-radius: 16px;
+  padding: 22px 24px;
+  min-width: 260px;
+  text-align: center;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
+}
+
+.lang-title {
+  font-size: 18px;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+
+.lang-buttons {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+}
+
 .popup {
   position: absolute;
   inset: 0;
