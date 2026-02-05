@@ -5,6 +5,7 @@ const ui = {
   lives: document.getElementById("lives"),
   cash: document.getElementById("cash"),
   wave: document.getElementById("wave"),
+  waveCount: document.getElementById("waveCount"),
   hint: document.getElementById("hint"),
   startWave: document.getElementById("startWave"),
   speed: document.getElementById("speed"),
@@ -41,7 +42,7 @@ const levels = [
     desc: "A twisting middle path with long sightlines.",
     cash: 160,
     lives: 20,
-    wavesToWin: 8,
+    wavesToWin: 5,
     difficulty: 1,
     theme: {
       grass: "#1d2b24",
@@ -67,7 +68,7 @@ const levels = [
     desc: "A double-back path that crowds the center.",
     cash: 180,
     lives: 18,
-    wavesToWin: 9,
+    wavesToWin: 5,
     difficulty: 1.15,
     theme: {
       grass: "#1b2430",
@@ -96,7 +97,7 @@ const levels = [
     desc: "Shorter path, faster waves.",
     cash: 200,
     lives: 16,
-    wavesToWin: 10,
+    wavesToWin: 5,
     difficulty: 1.35,
     theme: {
       grass: "#2b1d1b",
@@ -228,6 +229,7 @@ let selectedPlacedTower = null;
 let gameSpeed = 1;
 let gameState = "menu";
 let currentLevel = 0;
+let pendingNextLevel = null;
 let currentTheme = levels[0].theme;
 const unlockKey = "face-td-unlocks";
 const langKey = "face-td-lang";
@@ -253,13 +255,14 @@ const i18n = {
     hintUpgrade: "Tower upgraded.",
     hintUpgradeNoCash: "Not enough cash to upgrade.",
     hintSell: "Tower sold.",
-    menuMessage: "Select a level, then click Start Level.",
+    menuMessage: "Campaign: Level 1 has 5 waves. Click Start Level to begin.",
     menuLocked: "Locked. Clear previous level.",
     menuWin: (next) =>
-      next ? "Next level unlocked. Click Choose Next Level to pick it from the menu."
-        : "You beat all levels! Click Choose Next Level to replay any stage.",
+      next ? "Victory! Tap Next Level to continue."
+        : "Campaign complete! Tap Replay to play again.",
     popupTitle: "Level Cleared!",
-    popupButton: "Choose Next Level",
+    popupButton: "Next Level",
+    replayButton: "Replay Campaign",
     startLevel: "Start Level",
     resume: "Back to Game",
     startWave: "Start Next Wave",
@@ -270,11 +273,12 @@ const i18n = {
     lives: "Lives",
     cash: "Cash",
     wave: "Wave",
+    progress: "Progress",
     build: "Build",
     selectedTower: "Selected Tower",
     upgrade: (cost) => `Upgrade ($${cost})`,
     maxLevel: "Max Level",
-    sell: "Sell",
+    sell: "Sell (50%)",
     tipsTitle: "Tips",
     tips1: "Place towers along the path curves for maximum coverage.",
     tips2: "Gun towers are best for early waves. Cannons handle clusters.",
@@ -312,13 +316,14 @@ const i18n = {
     hintUpgrade: "อัปเกรดป้อมแล้ว",
     hintUpgradeNoCash: "เงินไม่พอสำหรับอัปเกรด",
     hintSell: "ขายป้อมแล้ว",
-    menuMessage: "เลือกด่าน แล้วกดเริ่มด่าน",
+    menuMessage: "โหมดแคมเปญ: ด่าน 1 มี 5 รอบ กดเริ่มด่านเพื่อเริ่ม",
     menuLocked: "ด่านนี้ยังล็อกอยู่ ต้องผ่านด่านก่อนหน้า",
     menuWin: (next) =>
-      next ? "ปลดล็อกด่านถัดไปแล้ว กดเลือกด่านเพื่อไปต่อ"
-        : "ผ่านทุกด่านแล้ว เลือกด่านเพื่อเล่นซ้ำได้",
+      next ? "ผ่านด่านแล้ว! กดด่านถัดไปเพื่อไปต่อ"
+        : "จบแคมเปญแล้ว! กดเล่นซ้ำได้",
     popupTitle: "ผ่านด่านแล้ว!",
-    popupButton: "เลือกด่านถัดไป",
+    popupButton: "ด่านถัดไป",
+    replayButton: "เล่นแคมเปญอีกครั้ง",
     startLevel: "เริ่มด่าน",
     resume: "กลับเข้าเกม",
     startWave: "เริ่มรอบถัดไป",
@@ -329,11 +334,12 @@ const i18n = {
     lives: "พลังชีวิต",
     cash: "เงิน",
     wave: "รอบ",
+    progress: "ความคืบหน้า",
     build: "สร้าง",
     selectedTower: "ป้อมที่เลือก",
     upgrade: (cost) => `อัปเกรด (${cost}$)`,
     maxLevel: "เต็มระดับ",
-    sell: "ขาย",
+    sell: "ขาย (50%)",
     tipsTitle: "เคล็ดลับ",
     tips1: "วางป้อมตามโค้งเพื่อโจมตีได้นานขึ้น",
     tips2: "ปืนเหมาะกับต้นเกม ปืนใหญ่เหมาะกับกลุ่มศัตรู",
@@ -464,6 +470,7 @@ function applyLanguage() {
   document.querySelectorAll(".stats .stat span")[0].textContent = t.lives;
   document.querySelectorAll(".stats .stat span")[1].textContent = t.cash;
   document.querySelectorAll(".stats .stat span")[2].textContent = t.wave;
+  document.querySelectorAll(".stats .stat span")[3].textContent = t.progress;
   document.querySelectorAll(".panel-block.small p")[0].textContent = t.tips1;
   document.querySelectorAll(".panel-block.small p")[1].textContent = t.tips2;
   ui.towerButtons.forEach((button) => {
@@ -477,8 +484,8 @@ function applyLanguage() {
   });
   document.querySelectorAll(".row span")[0].textContent = t.speed;
   document.querySelectorAll(".row span")[1].textContent = t.pause;
-ui.popupTitle.textContent = t.popupTitle;
-ui.popupClose.textContent = t.popupButton;
+  ui.popupTitle.textContent = t.popupTitle;
+  ui.popupClose.textContent = t.popupButton;
   ui.rotatePrompt.querySelector(".rotate-card").textContent = t.rotate;
   ui.langPrompt.querySelector(".lang-title").textContent = t.langTitle;
   setMenuMessage(t.menuMessage);
@@ -520,6 +527,7 @@ function updateUI() {
   ui.lives.textContent = lives;
   ui.cash.textContent = money;
   ui.wave.textContent = wave;
+  ui.waveCount.textContent = `${wave}/${wavesTarget()}`;
   updateUpgradePanel();
 }
 
@@ -600,6 +608,7 @@ function placeTower(x, y) {
     cooldown: 0,
     level: 0,
     angle: 0,
+    spent: type.cost,
   });
   money -= type.cost;
   updateUI();
@@ -864,8 +873,12 @@ function handleWin() {
     unlockedLevels[nextLevel] = true;
     saveUnlocks();
   }
+  pendingNextLevel = levels[nextLevel] ? nextLevel : 0;
   setMenuMessage(i18n[currentLang].popupTitle);
   renderLevels();
+  ui.popupClose.textContent = levels[nextLevel]
+    ? i18n[currentLang].popupButton
+    : i18n[currentLang].replayButton;
   showPopup(
     i18n[currentLang].popupTitle,
     i18n[currentLang].menuWin(levels[nextLevel])
@@ -1325,6 +1338,7 @@ function updateUpgradePanel() {
     ui.upgradeBtn.textContent = i18n[currentLang].upgrade(cost);
     ui.upgradeBtn.disabled = money < cost;
   }
+  ui.sellBtn.textContent = i18n[currentLang].sell;
 }
 
 function selectPlacedTower(tower) {
@@ -1372,6 +1386,7 @@ function attemptUpgrade() {
   }
   money -= cost;
   selectedPlacedTower.level += 1;
+  selectedPlacedTower.spent = (selectedPlacedTower.spent || towerTypes[selectedPlacedTower.type].cost) + cost;
   updateUI();
   updateUpgradePanel();
   setHint(i18n[currentLang].hintUpgrade);
@@ -1448,7 +1463,14 @@ ui.openMenu.addEventListener("click", () => {
 ui.popupClose.addEventListener("click", () => {
   initAudio();
   hidePopup();
-  setGameState("menu");
+  if (pendingNextLevel !== null) {
+    currentLevel = pendingNextLevel;
+    resetGame(currentLevel);
+    ui.pause.textContent = i18n[currentLang].pause;
+    setGameState("playing");
+  } else {
+    setGameState("menu");
+  }
 });
 
 ui.startGame.addEventListener("click", () => {
@@ -1477,8 +1499,8 @@ ui.upgradeBtn.addEventListener("click", () => {
 ui.sellBtn.addEventListener("click", () => {
   initAudio();
   if (!selectedPlacedTower) return;
-  const type = towerTypes[selectedPlacedTower.type];
-  const refund = Math.floor(type.cost * (0.6 + 0.15 * (selectedPlacedTower.level || 0)));
+  const spent = selectedPlacedTower.spent || towerTypes[selectedPlacedTower.type].cost;
+  const refund = Math.floor(spent * 0.5);
   money += refund;
   const index = towers.indexOf(selectedPlacedTower);
   if (index >= 0) towers.splice(index, 1);
