@@ -25,6 +25,8 @@ const ui = {
   popupTitle: document.getElementById("popupTitle"),
   popupBody: document.getElementById("popupBody"),
   popupClose: document.getElementById("popupClose"),
+  langPrompt: document.getElementById("langPrompt"),
+  rotatePrompt: document.getElementById("rotatePrompt"),
 };
 
 const gridSize = 40;
@@ -180,7 +182,108 @@ let gameState = "menu";
 let currentLevel = 0;
 let currentTheme = levels[0].theme;
 const unlockKey = "face-td-unlocks";
+const langKey = "face-td-lang";
 let unlockedLevels = [];
+let currentLang = "en";
+
+const i18n = {
+  en: {
+    title: "Saysuda Game",
+    subtitle: "STOP NAN",
+    hintSelect: "Select a tower to begin.",
+    hintPlace: "Select a tower and click the grass to place it.",
+    hintPlaced: "Tower placed.",
+    hintBlocked: "Can't place on the path.",
+    hintOccupied: "Space already occupied.",
+    hintNoCash: "Not enough cash for that tower.",
+    hintWave: (w) => `Wave ${w} incoming.`,
+    hintSlip: "An enemy slipped through!",
+    hintWaveClear: "Wave cleared. Start the next wave when ready.",
+    hintGameOver: "Game over. Open the menu to restart.",
+    hintAllClear: "All waves cleared!",
+    hintSelectTower: "Tower selected. Upgrade or sell from the panel.",
+    hintUpgrade: "Tower upgraded.",
+    hintUpgradeNoCash: "Not enough cash to upgrade.",
+    hintSell: "Tower sold.",
+    menuMessage: "Select a level, then click Start Level.",
+    menuLocked: "That level is locked.",
+    menuWin: (next) =>
+      next ? "Next level unlocked. Click Choose Next Level to pick it from the menu."
+        : "You beat all levels! Click Choose Next Level to replay any stage.",
+    popupTitle: "Level Cleared!",
+    popupButton: "Choose Next Level",
+    startLevel: "Start Level",
+    resume: "Back to Game",
+    startWave: "Start Next Wave",
+    pause: "Pause",
+    resumePause: "Resume",
+    menu: "Menu",
+    speed: "Speed",
+    lives: "Lives",
+    cash: "Cash",
+    wave: "Wave",
+    build: "Build",
+    selectedTower: "Selected Tower",
+    upgrade: (cost) => `Upgrade ($${cost})`,
+    maxLevel: "Max Level",
+    sell: "Sell",
+    tipsTitle: "Tips",
+    tips1: "Place towers along the path curves for maximum coverage.",
+    tips2: "Gun towers are best for early waves. Cannons handle clusters.",
+    chooseLevel: "Choose Level",
+    menuNote: "Audio activates after your first click. Shortcuts: Space = wave, U = upgrade.",
+    rotate: "Please rotate your phone to landscape.",
+    langTitle: "Choose Language",
+  },
+  th: {
+    title: "Saysuda Game",
+    subtitle: "STOP NAN",
+    hintSelect: "เลือกป้อมเพื่อเริ่มเกม",
+    hintPlace: "เลือกป้อมแล้วแตะพื้นที่ว่างเพื่อวาง",
+    hintPlaced: "วางป้อมแล้ว",
+    hintBlocked: "วางบนทางเดินไม่ได้",
+    hintOccupied: "ตำแหน่งนี้มีป้อมแล้ว",
+    hintNoCash: "เงินไม่พอสำหรับป้อมนี้",
+    hintWave: (w) => `รอบที่ ${w} กำลังมา`,
+    hintSlip: "ศัตรูหลุดผ่านไป!",
+    hintWaveClear: "เคลียร์รอบแล้ว เริ่มรอบถัดไปได้",
+    hintGameOver: "เกมจบ เปิดเมนูเพื่อเริ่มใหม่",
+    hintAllClear: "เคลียร์ครบทุกคลื่นแล้ว!",
+    hintSelectTower: "เลือกป้อมแล้ว อัปเกรดหรือขายได้จากแถบด้านข้าง",
+    hintUpgrade: "อัปเกรดป้อมแล้ว",
+    hintUpgradeNoCash: "เงินไม่พอสำหรับอัปเกรด",
+    hintSell: "ขายป้อมแล้ว",
+    menuMessage: "เลือกด่าน แล้วกดเริ่มด่าน",
+    menuLocked: "ด่านนี้ยังล็อกอยู่",
+    menuWin: (next) =>
+      next ? "ปลดล็อกด่านถัดไปแล้ว กดเลือกด่านเพื่อไปต่อ"
+        : "ผ่านทุกด่านแล้ว เลือกด่านเพื่อเล่นซ้ำได้",
+    popupTitle: "ผ่านด่านแล้ว!",
+    popupButton: "เลือกด่านถัดไป",
+    startLevel: "เริ่มด่าน",
+    resume: "กลับเข้าเกม",
+    startWave: "เริ่มรอบถัดไป",
+    pause: "หยุดชั่วคราว",
+    resumePause: "เล่นต่อ",
+    menu: "เมนู",
+    speed: "ความเร็ว",
+    lives: "พลังชีวิต",
+    cash: "เงิน",
+    wave: "รอบ",
+    build: "สร้าง",
+    selectedTower: "ป้อมที่เลือก",
+    upgrade: (cost) => `อัปเกรด (${cost}$)`,
+    maxLevel: "เต็มระดับ",
+    sell: "ขาย",
+    tipsTitle: "เคล็ดลับ",
+    tips1: "วางป้อมตามโค้งเพื่อโจมตีได้นานขึ้น",
+    tips2: "ปืนเหมาะกับต้นเกม ปืนใหญ่เหมาะกับกลุ่มศัตรู",
+    chooseLevel: "เลือกด่าน",
+    menuNote: "เสียงจะเริ่มหลังคลิกครั้งแรก ปุ่มลัด: Space=เริ่มรอบ, U=อัปเกรด",
+    rotate: "โปรดหมุนหน้าจอเป็นแนวนอน",
+    langTitle: "เลือกภาษา",
+  },
+};
 
 const towers = [];
 const enemies = [];
@@ -252,8 +355,56 @@ function saveUnlocks() {
   localStorage.setItem(unlockKey, JSON.stringify(unlockedLevels));
 }
 
+function loadLanguage() {
+  const saved = localStorage.getItem(langKey);
+  if (saved && (saved === "en" || saved === "th")) {
+    currentLang = saved;
+  } else {
+    currentLang = "en";
+  }
+}
+
+function setLanguage(lang) {
+  currentLang = lang;
+  localStorage.setItem(langKey, lang);
+  applyLanguage();
+  ui.langPrompt.classList.add("hidden");
+}
+
 function setMenuMessage(text) {
   ui.menuMessage.textContent = text || "";
+}
+
+function applyLanguage() {
+  const t = i18n[currentLang];
+  document.querySelector(".brand").textContent = t.title;
+  document.querySelector(".sub").textContent = t.subtitle;
+  document.querySelector(".menu-card h1").textContent = t.title;
+  document.getElementById("startGame").textContent = t.startLevel;
+  document.getElementById("resumeGame").textContent = t.resume;
+  document.getElementById("startWave").textContent = t.startWave;
+  document.getElementById("pause").textContent = t.pause;
+  document.getElementById("openMenu").textContent = t.menu;
+  document.querySelector(".menu-title").textContent = t.chooseLevel;
+  document.querySelector(".menu-note").textContent = t.menuNote;
+  document.querySelectorAll(".panel-title")[0].textContent = t.build;
+  document.querySelectorAll(".panel-title")[1].textContent = t.wave;
+  document.querySelectorAll(".panel-title")[2].textContent = t.selectedTower;
+  document.querySelectorAll(".panel-title")[3].textContent = t.tipsTitle;
+  document.querySelectorAll(".stats .stat span")[0].textContent = t.lives;
+  document.querySelectorAll(".stats .stat span")[1].textContent = t.cash;
+  document.querySelectorAll(".stats .stat span")[2].textContent = t.wave;
+  document.querySelectorAll(".panel-block.small p")[0].textContent = t.tips1;
+  document.querySelectorAll(".panel-block.small p")[1].textContent = t.tips2;
+  document.querySelectorAll(".row span")[0].textContent = t.speed;
+  document.querySelectorAll(".row span")[1].textContent = t.pause;
+  ui.popupTitle.textContent = t.popupTitle;
+  ui.popupClose.textContent = t.popupButton;
+  ui.rotatePrompt.querySelector(".rotate-card").textContent = t.rotate;
+  ui.langPrompt.querySelector(".lang-title").textContent = t.langTitle;
+  setMenuMessage(t.menuMessage);
+  setHint(t.hintPlace);
+  updateUpgradePanel();
 }
 
 function showPopup(title, body) {
@@ -348,15 +499,15 @@ function placeTower(x, y) {
   if (!selectedTower) return;
   const type = towerTypes[selectedTower];
   if (money < type.cost) {
-    setHint("Not enough cash for that tower.");
+    setHint(i18n[currentLang].hintNoCash);
     return;
   }
   if (isOnPath(x, y)) {
-    setHint("Can't place on the path.");
+    setHint(i18n[currentLang].hintBlocked);
     return;
   }
   if (isOccupied(x, y)) {
-    setHint("Space already occupied.");
+    setHint(i18n[currentLang].hintOccupied);
     return;
   }
 
@@ -371,13 +522,13 @@ function placeTower(x, y) {
   money -= type.cost;
   updateUI();
   playSound("place");
-  setHint("Tower placed.");
+  setHint(i18n[currentLang].hintPlaced);
 }
 
 function startWave() {
   if (waveInProgress || gameState !== "playing") return;
   if (wave >= wavesTarget()) {
-    setHint("All waves cleared. Open the menu to continue.");
+    setHint(i18n[currentLang].hintAllClear);
     return;
   }
   wave += 1;
@@ -386,7 +537,7 @@ function startWave() {
   spawnTimer = 0.2;
   spawnInterval = Math.max(0.3, 0.8 - wave * 0.03);
   waveInProgress = true;
-  setHint(`Wave ${wave} incoming.`);
+  setHint(i18n[currentLang].hintWave(wave));
   waves.push(waveData);
   playSound("wave");
   updateUI();
@@ -437,12 +588,12 @@ function updateEnemies(dt) {
       if (enemy.waypoint >= pathPoints.length) {
         enemies.splice(i, 1);
         lives -= 1;
-        setHint("An enemy slipped through!");
+        setHint(i18n[currentLang].hintSlip);
         updateUI();
         if (lives <= 0) {
-          setHint("Game over. Open the menu to restart.");
+          setHint(i18n[currentLang].hintGameOver);
           playSound("gameover");
-          setMenuMessage("Game over. Try again?");
+          setMenuMessage(i18n[currentLang].hintGameOver);
           setGameState("menu");
         }
       }
@@ -612,13 +763,11 @@ function handleWin() {
     unlockedLevels[nextLevel] = true;
     saveUnlocks();
   }
-  setMenuMessage(`Level cleared! ${levels[nextLevel] ? "Next level unlocked." : "You beat all levels!"}`);
+  setMenuMessage(i18n[currentLang].popupTitle);
   renderLevels();
   showPopup(
-    "Level Cleared!",
-    levels[nextLevel]
-      ? "Next level unlocked. Click Choose Next Level to pick it from the menu."
-      : "You beat all levels! Click Choose Next Level to replay any stage."
+    i18n[currentLang].popupTitle,
+    i18n[currentLang].menuWin(levels[nextLevel])
   );
 }
 
@@ -634,10 +783,10 @@ function updateSpawn(dt) {
   if (enemiesToSpawn === 0 && enemies.length === 0) {
     waveInProgress = false;
     if (wave >= wavesTarget()) {
-      setHint("All waves cleared!");
+      setHint(i18n[currentLang].hintAllClear);
       handleWin();
     } else {
-      setHint("Wave cleared. Start the next wave when ready.");
+      setHint(i18n[currentLang].hintWaveClear);
     }
   }
 }
@@ -1014,7 +1163,7 @@ function resetGame(levelIndex) {
   updateUpgradePanel();
   updateUI();
   setMenuMessage("");
-  setHint("Select a tower to begin.");
+  setHint(i18n[currentLang].hintSelect);
 }
 
 function updateUpgradePanel() {
@@ -1023,6 +1172,7 @@ function updateUpgradePanel() {
   if (!selectedPlacedTower) {
     empty.classList.remove("hidden");
     details.classList.add("hidden");
+    empty.textContent = i18n[currentLang].hintSelect;
     return;
   }
   const type = getTowerStats(selectedPlacedTower);
@@ -1032,11 +1182,11 @@ function updateUpgradePanel() {
   ui.upgradeName.textContent = `${towerTypes[selectedPlacedTower.type].name} Lv.${level + 1}`;
   ui.upgradeStats.textContent = `Damage ${type.damage.toFixed(0)} | Range ${type.range.toFixed(0)} | Rate ${type.fireRate.toFixed(2)}s`;
   if (maxLevelReached(selectedPlacedTower)) {
-    ui.upgradeBtn.textContent = "Max Level";
+    ui.upgradeBtn.textContent = i18n[currentLang].maxLevel;
     ui.upgradeBtn.disabled = true;
   } else {
     const cost = getUpgradeCost(selectedPlacedTower);
-    ui.upgradeBtn.textContent = `Upgrade ($${cost})`;
+    ui.upgradeBtn.textContent = i18n[currentLang].upgrade(cost);
     ui.upgradeBtn.disabled = money < cost;
   }
 }
@@ -1050,7 +1200,7 @@ function selectPlacedTower(tower) {
 
 function renderLevels() {
   ui.levelList.innerHTML = "";
-  setMenuMessage("Select a level, then click Start Level.");
+  setMenuMessage(i18n[currentLang].menuMessage);
   levels.forEach((level, index) => {
     const card = document.createElement("div");
     card.className = "level-card";
@@ -1080,14 +1230,14 @@ function attemptUpgrade() {
   if (!selectedPlacedTower || maxLevelReached(selectedPlacedTower)) return;
   const cost = getUpgradeCost(selectedPlacedTower);
   if (money < cost) {
-    setHint("Not enough cash to upgrade.");
+    setHint(i18n[currentLang].hintUpgradeNoCash);
     return;
   }
   money -= cost;
   selectedPlacedTower.level += 1;
   updateUI();
   updateUpgradePanel();
-  setHint("Tower upgraded.");
+  setHint(i18n[currentLang].hintUpgrade);
   playSound("cash");
 }
 
@@ -1117,7 +1267,7 @@ canvas.addEventListener("click", (event) => {
   const clickedTower = towers.find((tower) => Math.hypot(tower.x - snapped.x, tower.y - snapped.y) < gridSize * 0.6);
   if (clickedTower) {
     selectPlacedTower(clickedTower);
-    setHint("Tower selected. Upgrade or sell from the panel.");
+    setHint(i18n[currentLang].hintSelectTower);
     return;
   }
 
@@ -1144,11 +1294,11 @@ ui.pause.addEventListener("click", () => {
   initAudio();
   if (gameState === "playing") {
     gameState = "paused";
-    ui.pause.textContent = "Resume";
+    ui.pause.textContent = i18n[currentLang].resumePause;
     setGameState("paused");
   } else if (gameState === "paused") {
     gameState = "playing";
-    ui.pause.textContent = "Pause";
+    ui.pause.textContent = i18n[currentLang].pause;
     setGameState("playing");
   }
 });
@@ -1167,18 +1317,18 @@ ui.popupClose.addEventListener("click", () => {
 ui.startGame.addEventListener("click", () => {
   initAudio();
   if (!unlockedLevels[currentLevel]) {
-    setMenuMessage("That level is locked.");
+    setMenuMessage(i18n[currentLang].menuLocked);
     return;
   }
   resetGame(currentLevel);
-  ui.pause.textContent = "Pause";
+  ui.pause.textContent = i18n[currentLang].pause;
   hidePopup();
   setGameState("playing");
 });
 
 ui.resumeGame.addEventListener("click", () => {
   initAudio();
-  ui.pause.textContent = "Pause";
+  ui.pause.textContent = i18n[currentLang].pause;
   setGameState("playing");
 });
 
@@ -1198,7 +1348,7 @@ ui.sellBtn.addEventListener("click", () => {
   selectedPlacedTower = null;
   updateUI();
   updateUpgradePanel();
-  setHint("Tower sold.");
+  setHint(i18n[currentLang].hintSell);
 });
 
 ui.towerButtons.forEach((button) => {
@@ -1210,7 +1360,7 @@ ui.towerButtons.forEach((button) => {
     selectedPlacedTower = null;
     updateUpgradePanel();
     const type = towerTypes[selectedTower];
-    setHint(`Placing ${type.name}. Cost $${type.cost}.`);
+    setHint(`${i18n[currentLang].hintPlace} (${type.name} $${type.cost})`);
   });
 });
 
@@ -1230,9 +1380,31 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
+function updateOrientationPrompt() {
+  const isPortrait = window.innerHeight > window.innerWidth;
+  if (isPortrait) {
+    ui.rotatePrompt.classList.remove("hidden");
+  } else {
+    ui.rotatePrompt.classList.add("hidden");
+  }
+}
+
+ui.langPrompt.addEventListener("click", (event) => {
+  const button = event.target.closest("button[data-lang]");
+  if (!button) return;
+  setLanguage(button.dataset.lang);
+});
+
 loadUnlocks();
+loadLanguage();
+applyLanguage();
+if (!localStorage.getItem(langKey)) {
+  ui.langPrompt.classList.remove("hidden");
+}
+updateOrientationPrompt();
+window.addEventListener("resize", updateOrientationPrompt);
 renderLevels();
 updateUI();
 setGameState("menu");
-setHint("Select a tower to begin.");
+setHint(i18n[currentLang].hintSelect);
 requestAnimationFrame(update);
