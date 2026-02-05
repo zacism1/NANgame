@@ -25,6 +25,18 @@
       <div class="canvas-wrap">
         <canvas id="game" width="960" height="540"></canvas>
         <div class="hint" id="hint">Select a tower and click the grass to place it.</div>
+        <div class="mission hidden" id="missionPrompt">
+          <div class="mission-card">
+            <div class="mission-image">
+              <img src="assets/mission.jpg" alt="Mission" />
+            </div>
+            <div class="mission-title" id="missionTitle">Mission Briefing</div>
+            <div class="mission-text" id="missionText">
+              Stop Nan from reaching the base and eating all the food and drinking all the beer.
+            </div>
+            <button id="missionStart" class="action">Begin Defense</button>
+          </div>
+        </div>
         <div class="lang hidden" id="langPrompt">
           <div class="lang-card">
             <div class="lang-title">Choose Language</div>
