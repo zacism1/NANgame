@@ -24,6 +24,18 @@
       <div class="canvas-wrap">
         <canvas id="game" width="960" height="540"></canvas>
         <div class="hint" id="hint">Select a tower and click the grass to place it.</div>
+        <div class="lang hidden" id="langPrompt">
+          <div class="lang-card">
+            <div class="lang-title">Choose Language</div>
+            <div class="lang-buttons">
+              <button class="action" data-lang="en">English</button>
+              <button class="chip" data-lang="th">ไทย</button>
+            </div>
+          </div>
+        </div>
+        <div class="rotate hidden" id="rotatePrompt">
+          <div class="rotate-card">Please rotate your phone to landscape.</div>
+        </div>
         <div class="popup hidden" id="popup">
           <div class="popup-card">
             <div class="popup-title" id="popupTitle">Level Cleared!</div>
