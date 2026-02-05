@@ -11,6 +11,7 @@ const ui = {
   speed: document.getElementById("speed"),
   pause: document.getElementById("pause"),
   openMenu: document.getElementById("openMenu"),
+  fullscreen: document.getElementById("fullscreen"),
   towerButtons: Array.from(document.querySelectorAll(".tower-btn")),
   menu: document.getElementById("menu"),
   menuMessage: document.getElementById("menuMessage"),
@@ -282,6 +283,9 @@ const i18n = {
     resumePause: "Resume",
     menu: "Menu",
     speed: "Speed",
+    screen: "Screen",
+    fullscreen: "Fullscreen",
+    exitFullscreen: "Exit Fullscreen",
     lives: "Lives",
     cash: "Cash",
     wave: "Wave",
@@ -346,6 +350,9 @@ const i18n = {
     resumePause: "เล่นต่อ",
     menu: "เมนู",
     speed: "ความเร็ว",
+    screen: "หน้าจอ",
+    fullscreen: "เต็มจอ",
+    exitFullscreen: "ออกเต็มจอ",
     lives: "พลังชีวิต",
     cash: "เงิน",
     wave: "รอบ",
@@ -499,6 +506,8 @@ function applyLanguage() {
   });
   document.querySelectorAll(".row span")[0].textContent = t.speed;
   document.querySelectorAll(".row span")[1].textContent = t.pause;
+  document.querySelectorAll(".row span")[2].textContent = t.screen;
+  ui.fullscreen.textContent = document.fullscreenElement ? t.exitFullscreen : t.fullscreen;
   ui.popupTitle.textContent = t.popupTitle;
   if (!pendingReplay) {
     ui.popupClose.textContent = t.popupButton;
@@ -1485,6 +1494,24 @@ ui.pause.addEventListener("click", () => {
     ui.pause.textContent = i18n[currentLang].pause;
     setGameState("playing");
   }
+});
+
+ui.fullscreen.addEventListener("click", async () => {
+  initAudio();
+  try {
+    if (!document.fullscreenElement) {
+      await document.documentElement.requestFullscreen();
+    } else {
+      await document.exitFullscreen();
+    }
+  } catch (error) {
+    // ignore if not supported
+  }
+  applyLanguage();
+});
+
+document.addEventListener("fullscreenchange", () => {
+  applyLanguage();
 });
 
 ui.openMenu.addEventListener("click", () => {
