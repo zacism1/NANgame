@@ -25,6 +25,7 @@ body {
     radial-gradient(circle at 70% 80%, rgba(0, 255, 198, 0.12), transparent 55%),
     linear-gradient(160deg, #0c1118 0%, #090d12 100%);
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .page {
@@ -118,7 +119,7 @@ canvas {
 }
 
 .menu {
-  position: absolute;
+  position: fixed;
   inset: 0;
   background: rgba(9, 12, 14, 0.78);
   display: flex;
@@ -127,6 +128,8 @@ canvas {
   padding: 20px;
   backdrop-filter: blur(4px);
   z-index: 10;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .menu.hidden {
@@ -135,23 +138,29 @@ canvas {
 
 .lang,
 .rotate {
-  position: absolute;
+  position: fixed;
   inset: 0;
   background: rgba(6, 8, 10, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 12;
+  padding: 20px;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .mission {
-  position: absolute;
+  position: fixed;
   inset: 0;
   background: rgba(4, 6, 8, 0.75);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 11;
+  padding: 20px;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .mission.hidden {
@@ -162,7 +171,9 @@ canvas {
   background: linear-gradient(150deg, rgba(20, 28, 36, 0.95), rgba(10, 14, 18, 0.95));
   border-radius: 16px;
   padding: 20px;
-  width: min(520px, 90%);
+  width: min(520px, 92%);
+  max-height: 90vh;
+  overflow: auto;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 20px 45px rgba(0, 0, 0, 0.4);
   text-align: center;
@@ -217,13 +228,16 @@ canvas {
 }
 
 .popup {
-  position: absolute;
+  position: fixed;
   inset: 0;
   background: rgba(6, 8, 10, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 9;
+  padding: 20px;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .popup.hidden {
@@ -235,6 +249,8 @@ canvas {
   border-radius: 16px;
   padding: 22px 24px;
   min-width: 280px;
+  max-height: 90vh;
+  overflow: auto;
   text-align: center;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 20px 45px rgba(0, 0, 0, 0.35);
@@ -257,6 +273,8 @@ canvas {
   border-radius: 18px;
   padding: 24px 28px;
   width: min(540px, 90%);
+  max-height: 90vh;
+  overflow: auto;
   border: 1px solid rgba(255, 255, 255, 0.08);
   box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
   text-align: center;
@@ -484,7 +502,7 @@ canvas {
 
 @media (max-width: 720px) {
   .page {
-    padding: 18px 14px 28px;
+    padding: 14px 12px 24px;
   }
 
   .topbar {
@@ -525,6 +543,10 @@ canvas {
 
   .menu-card {
     padding: 18px;
+  }
+
+  canvas {
+    height: 60vh;
   }
 }
 
