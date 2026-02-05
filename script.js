@@ -49,16 +49,17 @@ const levels = [
       grid: "rgba(255,255,255,0.04)",
       glow: "rgba(245, 177, 46, 0.08)",
       style: "industrial",
+      image: "assets/level1.jpg",
     },
     path: [
-      { x: -40, y: 280 },
-      { x: 200, y: 280 },
-      { x: 200, y: 120 },
-      { x: 520, y: 120 },
-      { x: 520, y: 360 },
+      { x: -40, y: 320 },
+      { x: 180, y: 320 },
+      { x: 300, y: 180 },
+      { x: 520, y: 180 },
+      { x: 640, y: 360 },
       { x: 820, y: 360 },
-      { x: 820, y: 200 },
-      { x: 1040, y: 200 },
+      { x: 940, y: 240 },
+      { x: 1040, y: 240 },
     ],
   },
   {
@@ -74,18 +75,20 @@ const levels = [
       grid: "rgba(160, 200, 255, 0.06)",
       glow: "rgba(125, 211, 252, 0.12)",
       style: "futuristic",
+      image: "assets/level2.png",
     },
     path: [
-      { x: -40, y: 120 },
-      { x: 240, y: 120 },
-      { x: 240, y: 420 },
-      { x: 480, y: 420 },
-      { x: 480, y: 180 },
-      { x: 700, y: 180 },
-      { x: 700, y: 460 },
-      { x: 980, y: 460 },
-      { x: 980, y: 280 },
-      { x: 1040, y: 280 },
+      { x: -40, y: 140 },
+      { x: 220, y: 140 },
+      { x: 320, y: 260 },
+      { x: 520, y: 260 },
+      { x: 640, y: 120 },
+      { x: 820, y: 120 },
+      { x: 900, y: 260 },
+      { x: 760, y: 420 },
+      { x: 520, y: 420 },
+      { x: 360, y: 520 },
+      { x: 1040, y: 520 },
     ],
   },
   {
@@ -101,18 +104,17 @@ const levels = [
       grid: "rgba(255, 190, 130, 0.06)",
       glow: "rgba(255, 107, 61, 0.12)",
       style: "industrial",
+      image: "assets/level3.png",
     },
     path: [
-      { x: -40, y: 320 },
-      { x: 180, y: 320 },
-      { x: 180, y: 80 },
-      { x: 420, y: 80 },
-      { x: 420, y: 300 },
-      { x: 660, y: 300 },
-      { x: 660, y: 120 },
-      { x: 900, y: 120 },
-      { x: 900, y: 420 },
-      { x: 1040, y: 420 },
+      { x: -40, y: 260 },
+      { x: 160, y: 260 },
+      { x: 280, y: 360 },
+      { x: 520, y: 360 },
+      { x: 640, y: 200 },
+      { x: 820, y: 200 },
+      { x: 900, y: 340 },
+      { x: 1040, y: 340 },
     ],
   },
 ];
@@ -172,6 +174,13 @@ enemyImage.onerror = () => {
   setMenuMessage("Enemy image missing. Check assets/enemy.png.");
 };
 
+const levelImages = levels.map((level) => {
+  if (!level.theme.image) return null;
+  const img = new Image();
+  img.src = level.theme.image;
+  return img;
+});
+
 let pathPoints = levels[0].path;
 let money = levels[0].cash;
 let lives = levels[0].lives;
@@ -207,7 +216,7 @@ const i18n = {
     hintUpgradeNoCash: "Not enough cash to upgrade.",
     hintSell: "Tower sold.",
     menuMessage: "Select a level, then click Start Level.",
-    menuLocked: "That level is locked.",
+    menuLocked: "Locked. Clear previous level.",
     menuWin: (next) =>
       next ? "Next level unlocked. Click Choose Next Level to pick it from the menu."
         : "You beat all levels! Click Choose Next Level to replay any stage.",
@@ -266,7 +275,7 @@ const i18n = {
     hintUpgradeNoCash: "เงินไม่พอสำหรับอัปเกรด",
     hintSell: "ขายป้อมแล้ว",
     menuMessage: "เลือกด่าน แล้วกดเริ่มด่าน",
-    menuLocked: "ด่านนี้ยังล็อกอยู่",
+    menuLocked: "ด่านนี้ยังล็อกอยู่ ต้องผ่านด่านก่อนหน้า",
     menuWin: (next) =>
       next ? "ปลดล็อกด่านถัดไปแล้ว กดเลือกด่านเพื่อไปต่อ"
         : "ผ่านทุกด่านแล้ว เลือกด่านเพื่อเล่นซ้ำได้",
@@ -432,11 +441,12 @@ function applyLanguage() {
   document.querySelectorAll(".row span")[1].textContent = t.pause;
 ui.popupTitle.textContent = t.popupTitle;
 ui.popupClose.textContent = t.popupButton;
-ui.rotatePrompt.querySelector(".rotate-card").textContent = t.rotate;
-ui.langPrompt.querySelector(".lang-title").textContent = t.langTitle;
-setMenuMessage(t.menuMessage);
-setHint(t.hintPlace);
-updateUpgradePanel();
+  ui.rotatePrompt.querySelector(".rotate-card").textContent = t.rotate;
+  ui.langPrompt.querySelector(".lang-title").textContent = t.langTitle;
+  setMenuMessage(t.menuMessage);
+  setHint(t.hintPlace);
+  updateUpgradePanel();
+  renderLevels();
 }
 
 function showPopup(title, body) {
@@ -862,8 +872,28 @@ function drawGrid() {
 }
 
 function drawBackground() {
-  ctx.fillStyle = currentTheme.grass;
-  ctx.fillRect(0, 0, map.width, map.height);
+  const levelImage = levelImages[currentLevel];
+  if (levelImage && levelImage.complete && levelImage.naturalWidth > 0) {
+    const canvasRatio = map.width / map.height;
+    const imageRatio = levelImage.naturalWidth / levelImage.naturalHeight;
+    let drawWidth = map.width;
+    let drawHeight = map.height;
+    let offsetX = 0;
+    let offsetY = 0;
+    if (imageRatio > canvasRatio) {
+      drawWidth = map.height * imageRatio;
+      offsetX = (map.width - drawWidth) / 2;
+    } else {
+      drawHeight = map.width / imageRatio;
+      offsetY = (map.height - drawHeight) / 2;
+    }
+    ctx.drawImage(levelImage, offsetX, offsetY, drawWidth, drawHeight);
+    ctx.fillStyle = "rgba(10, 14, 18, 0.35)";
+    ctx.fillRect(0, 0, map.width, map.height);
+  } else {
+    ctx.fillStyle = currentTheme.grass;
+    ctx.fillRect(0, 0, map.width, map.height);
+  }
 
   const gradient = ctx.createLinearGradient(0, 0, map.width, map.height);
   gradient.addColorStop(0, currentTheme.glow);
@@ -907,12 +937,16 @@ function drawPath() {
   ctx.strokeStyle = currentTheme.path;
   ctx.lineWidth = 50;
   ctx.lineCap = "round";
+  if (levelImages[currentLevel] && levelImages[currentLevel].complete) {
+    ctx.globalAlpha = 0.7;
+  }
   ctx.beginPath();
   ctx.moveTo(pathPoints[0].x, pathPoints[0].y);
   for (const point of pathPoints.slice(1)) {
     ctx.lineTo(point.x, point.y);
   }
   ctx.stroke();
+  ctx.globalAlpha = 1;
 
   ctx.strokeStyle = "rgba(0,0,0,0.4)";
   ctx.lineWidth = 4;
