@@ -230,6 +230,7 @@ let gameSpeed = 1;
 let gameState = "menu";
 let currentLevel = 0;
 let pendingNextLevel = null;
+let pendingReplay = false;
 let currentTheme = levels[0].theme;
 const unlockKey = "face-td-unlocks";
 const langKey = "face-td-lang";
@@ -873,7 +874,8 @@ function handleWin() {
     unlockedLevels[nextLevel] = true;
     saveUnlocks();
   }
-  pendingNextLevel = levels[nextLevel] ? nextLevel : 0;
+  pendingNextLevel = levels[nextLevel] ? nextLevel : null;
+  pendingReplay = !levels[nextLevel];
   setMenuMessage(i18n[currentLang].popupTitle);
   renderLevels();
   ui.popupClose.textContent = levels[nextLevel]
@@ -1286,12 +1288,12 @@ function setGameState(state) {
   }
 }
 
-function resetGame(levelIndex) {
+function resetGame(levelIndex, keepMoney = false) {
   currentLevel = levelIndex;
   const level = levels[levelIndex];
   pathPoints = level.path;
   currentTheme = level.theme;
-  money = level.cash;
+  money = keepMoney ? Math.max(money, level.cash) : level.cash;
   lives = level.lives;
   wave = 0;
   towers.length = 0;
@@ -1306,6 +1308,7 @@ function resetGame(levelIndex) {
   flashes.length = 0;
   smokes.length = 0;
   selectedPlacedTower = null;
+  pendingReplay = false;
   hidePopup();
   updateUpgradePanel();
   updateUI();
@@ -1465,12 +1468,20 @@ ui.popupClose.addEventListener("click", () => {
   hidePopup();
   if (pendingNextLevel !== null) {
     currentLevel = pendingNextLevel;
-    resetGame(currentLevel);
+    resetGame(currentLevel, true);
     ui.pause.textContent = i18n[currentLang].pause;
     setGameState("playing");
-  } else {
-    setGameState("menu");
+    return;
   }
+  if (pendingReplay) {
+    currentLevel = 0;
+    resetGame(currentLevel, false);
+    ui.pause.textContent = i18n[currentLang].pause;
+    setGameState("playing");
+    pendingReplay = false;
+    return;
+  }
+  setGameState("menu");
 });
 
 ui.startGame.addEventListener("click", () => {
@@ -1479,7 +1490,7 @@ ui.startGame.addEventListener("click", () => {
     setMenuMessage(i18n[currentLang].menuLocked);
     return;
   }
-  resetGame(currentLevel);
+  resetGame(currentLevel, false);
   ui.pause.textContent = i18n[currentLang].pause;
   hidePopup();
   setGameState("playing");
