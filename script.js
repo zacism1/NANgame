@@ -174,6 +174,44 @@ enemyImage.onerror = () => {
   setMenuMessage("Enemy image missing. Check assets/enemy.png.");
 };
 
+const towerImageSources = {
+  gun: "assets/gun1.jpg",
+  cannon: "assets/gun2.jpg",
+  sniper: "assets/gun3.jpg",
+  cryo: "assets/gun4.jpg",
+};
+const towerImages = {};
+
+function makeTransparentWhite(source) {
+  const canvas = document.createElement("canvas");
+  canvas.width = source.naturalWidth;
+  canvas.height = source.naturalHeight;
+  const ctx2 = canvas.getContext("2d");
+  ctx2.drawImage(source, 0, 0);
+  const imgData = ctx2.getImageData(0, 0, canvas.width, canvas.height);
+  const data = imgData.data;
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+    if (r > 235 && g > 235 && b > 235) {
+      data[i + 3] = 0;
+    }
+  }
+  ctx2.putImageData(imgData, 0, 0);
+  return canvas;
+}
+
+function loadTowerImages() {
+  Object.entries(towerImageSources).forEach(([key, src]) => {
+    const img = new Image();
+    img.src = src;
+    img.onload = () => {
+      towerImages[key] = makeTransparentWhite(img);
+    };
+  });
+}
+
 const levelImages = levels.map((level) => {
   if (!level.theme.image) return null;
   const img = new Image();
@@ -961,6 +999,7 @@ function drawPath() {
 }
 
 function drawTowers() {
+  const baseSizes = { gun: 44, cannon: 52, sniper: 48, cryo: 46 };
   for (const tower of towers) {
     const type = getTowerStats(tower);
     const angle = tower.angle || 0;
@@ -975,57 +1014,65 @@ function drawTowers() {
     ctx.translate(tower.x, tower.y);
     ctx.rotate(angle);
 
-    if (tower.type === "cannon") {
-      ctx.fillStyle = type.color;
-      ctx.strokeStyle = "#101416";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(0, 0, 18 * sizeBoost, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      ctx.fillStyle = "#101416";
-      ctx.fillRect(-6, -6, 26 * sizeBoost, 12 * sizeBoost);
-      ctx.fillStyle = "#2f1a12";
-      ctx.fillRect(10, -4, 18 * sizeBoost, 8 * sizeBoost);
-    } else if (tower.type === "sniper") {
-      ctx.fillStyle = type.color;
-      ctx.strokeStyle = "#0b0f12";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(0, 0, 14 * sizeBoost, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = "#0b0f12";
-      ctx.fillRect(-4, -4, 30 * sizeBoost, 8 * sizeBoost);
-      ctx.fillStyle = "#334155";
-      ctx.fillRect(18, -2, 16 * sizeBoost, 4 * sizeBoost);
-    } else if (tower.type === "cryo") {
-      ctx.fillStyle = type.color;
-      ctx.strokeStyle = "#101416";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(0, 0, 16 * sizeBoost, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.strokeStyle = "#b6f1ff";
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(-6 * sizeBoost, -8 * sizeBoost);
-      ctx.lineTo(10 * sizeBoost, 6 * sizeBoost);
-      ctx.moveTo(6 * sizeBoost, -8 * sizeBoost);
-      ctx.lineTo(-10 * sizeBoost, 6 * sizeBoost);
-      ctx.stroke();
+    const img = towerImages[tower.type];
+    if (img) {
+      const base = baseSizes[tower.type] || 46;
+      const w = base * sizeBoost;
+      const h = base * sizeBoost;
+      ctx.drawImage(img, -w / 2, -h / 2, w, h);
     } else {
-      ctx.fillStyle = type.color;
-      ctx.strokeStyle = "#101416";
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(0, 0, 16 * sizeBoost, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = "#101416";
-      ctx.fillRect(-6, -4, 22 * sizeBoost, 8 * sizeBoost);
+      if (tower.type === "cannon") {
+        ctx.fillStyle = type.color;
+        ctx.strokeStyle = "#101416";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, 18 * sizeBoost, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = "#101416";
+        ctx.fillRect(-6, -6, 26 * sizeBoost, 12 * sizeBoost);
+        ctx.fillStyle = "#2f1a12";
+        ctx.fillRect(10, -4, 18 * sizeBoost, 8 * sizeBoost);
+      } else if (tower.type === "sniper") {
+        ctx.fillStyle = type.color;
+        ctx.strokeStyle = "#0b0f12";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, 14 * sizeBoost, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#0b0f12";
+        ctx.fillRect(-4, -4, 30 * sizeBoost, 8 * sizeBoost);
+        ctx.fillStyle = "#334155";
+        ctx.fillRect(18, -2, 16 * sizeBoost, 4 * sizeBoost);
+      } else if (tower.type === "cryo") {
+        ctx.fillStyle = type.color;
+        ctx.strokeStyle = "#101416";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, 16 * sizeBoost, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.strokeStyle = "#b6f1ff";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(-6 * sizeBoost, -8 * sizeBoost);
+        ctx.lineTo(10 * sizeBoost, 6 * sizeBoost);
+        ctx.moveTo(6 * sizeBoost, -8 * sizeBoost);
+        ctx.lineTo(-10 * sizeBoost, 6 * sizeBoost);
+        ctx.stroke();
+      } else {
+        ctx.fillStyle = type.color;
+        ctx.strokeStyle = "#101416";
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.arc(0, 0, 16 * sizeBoost, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = "#101416";
+        ctx.fillRect(-6, -4, 22 * sizeBoost, 8 * sizeBoost);
+      }
     }
 
     if (level > 0) {
@@ -1490,6 +1537,7 @@ ui.langPrompt.addEventListener("click", (event) => {
 loadUnlocks();
 loadLanguage();
 applyLanguage();
+loadTowerImages();
 if (!localStorage.getItem(langKey)) {
   ui.langPrompt.classList.remove("hidden");
 }
