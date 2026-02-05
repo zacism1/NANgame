@@ -28,6 +28,10 @@ const ui = {
   popupClose: document.getElementById("popupClose"),
   langPrompt: document.getElementById("langPrompt"),
   rotatePrompt: document.getElementById("rotatePrompt"),
+  missionPrompt: document.getElementById("missionPrompt"),
+  missionTitle: document.getElementById("missionTitle"),
+  missionText: document.getElementById("missionText"),
+  missionStart: document.getElementById("missionStart"),
 };
 
 const gridSize = 40;
@@ -167,6 +171,7 @@ const enemyTypes = {
   fast: { name: "Fast", hp: 0.7, speed: 1.45, radius: 16, bounty: 0.9 },
   tank: { name: "Tank", hp: 2.2, speed: 0.75, radius: 24, bounty: 1.4 },
   boss: { name: "Boss", hp: 7.5, speed: 0.55, radius: 60, bounty: 5.0 },
+  zac: { name: "Zac", hp: 9.5, speed: 0.5, radius: 70, bounty: 8.0 },
 };
 
 const enemyImage = new Image();
@@ -174,6 +179,9 @@ enemyImage.src = "assets/enemy.png";
 enemyImage.onerror = () => {
   setMenuMessage("Enemy image missing. Check assets/enemy.png.");
 };
+
+const zacImage = new Image();
+zacImage.src = "assets/zac.png";
 
 const towerImageSources = {
   gun: "assets/gun1.jpg",
@@ -264,6 +272,9 @@ const i18n = {
     popupTitle: "Level Cleared!",
     popupButton: "Next Level",
     replayButton: "Replay Campaign",
+    missionTitle: "Mission Briefing",
+    missionText: "Stop Nan from reaching the base and eating all the food and drinking all the beer.",
+    missionStart: "Begin Defense",
     startLevel: "Start Level",
     resume: "Back to Game",
     startWave: "Start Next Wave",
@@ -325,6 +336,9 @@ const i18n = {
     popupTitle: "ผ่านด่านแล้ว!",
     popupButton: "ด่านถัดไป",
     replayButton: "เล่นแคมเปญอีกครั้ง",
+    missionTitle: "ภารกิจ",
+    missionText: "หยุด Nan ไม่ให้ถึงฐาน และไม่ให้กินอาหารกับดื่มเบียร์หมด",
+    missionStart: "เริ่มป้องกัน",
     startLevel: "เริ่มด่าน",
     resume: "กลับเข้าเกม",
     startWave: "เริ่มรอบถัดไป",
@@ -486,9 +500,14 @@ function applyLanguage() {
   document.querySelectorAll(".row span")[0].textContent = t.speed;
   document.querySelectorAll(".row span")[1].textContent = t.pause;
   ui.popupTitle.textContent = t.popupTitle;
-  ui.popupClose.textContent = t.popupButton;
+  if (!pendingReplay) {
+    ui.popupClose.textContent = t.popupButton;
+  }
   ui.rotatePrompt.querySelector(".rotate-card").textContent = t.rotate;
   ui.langPrompt.querySelector(".lang-title").textContent = t.langTitle;
+  ui.missionTitle.textContent = t.missionTitle;
+  ui.missionText.textContent = t.missionText;
+  ui.missionStart.textContent = t.missionStart;
   setMenuMessage(t.menuMessage);
   setHint(t.hintPlace);
   updateUpgradePanel();
@@ -498,6 +517,9 @@ function applyLanguage() {
 function showPopup(title, body) {
   ui.popupTitle.textContent = title;
   ui.popupBody.textContent = body;
+  if (pendingReplay) {
+    ui.popupClose.textContent = i18n[currentLang].replayButton;
+  }
   ui.popup.classList.remove("hidden");
 }
 
@@ -513,7 +535,8 @@ function buildWave(number) {
   let bossCount = number % 5 === 0 ? 1 : 0;
   if (number % 5 === 0 && currentLevel >= 1) bossCount += 1;
   if (number % 5 === 0 && currentLevel >= 2) bossCount += 1;
-  return { count, health, speed, bounty: 12 + number * 2, bossCount };
+  const zacCount = number === wavesTarget() ? 1 : 0;
+  return { count, health, speed, bounty: 12 + number * 2, bossCount, zacCount };
 }
 
 function wavesTarget() {
@@ -636,6 +659,10 @@ function startWave() {
 }
 
 function rollEnemyType(waveData) {
+  if (waveData.zacCount > 0) {
+    waveData.zacCount -= 1;
+    return "zac";
+  }
   if (waveData.bossCount > 0) {
     waveData.bossCount -= 1;
     return "boss";
@@ -1115,8 +1142,9 @@ function drawEnemies() {
     ctx.save();
     ctx.translate(enemy.x, enemy.y);
     const size = enemy.radius * 2.64;
-    if (enemyImage.complete && enemyImage.naturalWidth > 0) {
-      ctx.drawImage(enemyImage, -size / 2, -size / 2, size, size);
+    const img = enemy.kind === "zac" ? zacImage : enemyImage;
+    if (img.complete && img.naturalWidth > 0) {
+      ctx.drawImage(img, -size / 2, -size / 2, size, size);
     } else {
       ctx.fillStyle = "#d86a5a";
       ctx.beginPath();
@@ -1310,6 +1338,7 @@ function resetGame(levelIndex, keepMoney = false) {
   selectedPlacedTower = null;
   pendingReplay = false;
   hidePopup();
+  ui.missionPrompt.classList.add("hidden");
   updateUpgradePanel();
   updateUI();
   setMenuMessage("");
@@ -1470,14 +1499,16 @@ ui.popupClose.addEventListener("click", () => {
     currentLevel = pendingNextLevel;
     resetGame(currentLevel, true);
     ui.pause.textContent = i18n[currentLang].pause;
-    setGameState("playing");
+    ui.missionPrompt.classList.remove("hidden");
+    setGameState("paused");
     return;
   }
   if (pendingReplay) {
     currentLevel = 0;
     resetGame(currentLevel, false);
     ui.pause.textContent = i18n[currentLang].pause;
-    setGameState("playing");
+    ui.missionPrompt.classList.remove("hidden");
+    setGameState("paused");
     pendingReplay = false;
     return;
   }
@@ -1493,12 +1524,19 @@ ui.startGame.addEventListener("click", () => {
   resetGame(currentLevel, false);
   ui.pause.textContent = i18n[currentLang].pause;
   hidePopup();
-  setGameState("playing");
+  ui.missionPrompt.classList.remove("hidden");
+  setGameState("paused");
 });
 
 ui.resumeGame.addEventListener("click", () => {
   initAudio();
   ui.pause.textContent = i18n[currentLang].pause;
+  setGameState("playing");
+});
+
+ui.missionStart.addEventListener("click", () => {
+  initAudio();
+  ui.missionPrompt.classList.add("hidden");
   setGameState("playing");
 });
 
