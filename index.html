@@ -3,139 +3,36 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Face Siege TD</title>
-  <link rel="stylesheet" href="styles.css" />
+  <title>NAN Arcade</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles/shared.css" />
+  <link rel="stylesheet" href="styles/hub.css" />
 </head>
 <body>
-  <div class="page">
-    <header class="topbar">
-      <div class="title">
-        <div class="brand">Saysuda Game</div>
-        <div class="sub">STOP NAN</div>
+  <div class="hub-page">
+    <header class="hub-hero">
+      <div class="hub-avatar-wrap">
+        <div class="hub-avatar-ring"></div>
+        <img class="hub-avatar" src="assets/nan/portrait.jpg" alt="Nan" />
       </div>
-      <div class="stats">
-        <div class="stat"><span>Lives</span><strong id="lives">20</strong></div>
-        <div class="stat"><span>Cash</span><strong id="cash">150</strong></div>
-        <div class="stat"><span>Wave</span><strong id="wave">0</strong></div>
-        <div class="stat"><span>Progress</span><strong id="waveCount">0/0</strong></div>
+      <div class="hub-hero-text">
+        <h1 class="hub-title">NAN Arcade</h1>
+        <p class="hub-tagline">A collection of games starring Nan. Pick a game below and jump in.</p>
       </div>
     </header>
 
-    <main class="board">
-      <div class="canvas-wrap">
-        <canvas id="game" width="960" height="540"></canvas>
-        <div class="hint" id="hint">Select a tower and click the grass to place it.</div>
-        <div class="mission hidden" id="missionPrompt">
-          <div class="mission-card">
-            <div class="mission-image">
-              <img src="assets/mission.jpg" alt="Mission" />
-            </div>
-            <div class="mission-title" id="missionTitle">Mission Briefing</div>
-            <div class="mission-text" id="missionText">
-              Stop Nan from reaching the base and eating all the food and drinking all the beer.
-            </div>
-            <button id="missionStart" class="action">Begin Defense</button>
-          </div>
-        </div>
-        <div class="lang hidden" id="langPrompt">
-          <div class="lang-card">
-            <div class="lang-title">Choose Language</div>
-            <div class="lang-buttons">
-              <button class="action" data-lang="en">English</button>
-              <button class="chip" data-lang="th">ไทย</button>
-            </div>
-          </div>
-        </div>
-        <div class="rotate hidden" id="rotatePrompt">
-          <div class="rotate-card">Please rotate your phone to landscape.</div>
-        </div>
-        <div class="popup hidden" id="popup">
-          <div class="popup-card">
-            <div class="popup-title" id="popupTitle">Level Cleared!</div>
-            <div class="popup-body" id="popupBody">You finished the level.</div>
-            <button id="popupClose" class="action">Next Level</button>
-          </div>
-        </div>
-        <div class="menu" id="menu">
-          <div class="menu-card">
-            <h1>Saysuda Game</h1>
-            <p>Place towers, earn cash, and survive the waves.</p>
-            <div class="menu-message" id="menuMessage"></div>
-            <div class="menu-section">
-              <div class="menu-title">Choose Level</div>
-              <div class="level-grid" id="levelList"></div>
-            </div>
-            <div class="menu-actions">
-              <button id="startGame" class="action">Start Level</button>
-              <button id="resumeGame" class="chip">Back to Game</button>
-            </div>
-            <div class="menu-note">Audio activates after your first click. Shortcuts: Space = wave, U = upgrade.</div>
-          </div>
-        </div>
-      </div>
-      <aside class="panel">
-        <div class="panel-block">
-          <div class="panel-title">Build</div>
-          <button class="tower-btn" data-tower="gun">
-            <div class="tower-name">Gun</div>
-            <div class="tower-desc">Fast fire, light damage</div>
-            <div class="tower-cost">$50</div>
-          </button>
-          <button class="tower-btn" data-tower="cannon">
-            <div class="tower-name">Cannon</div>
-            <div class="tower-desc">Slow fire, splash damage</div>
-            <div class="tower-cost">$120</div>
-          </button>
-          <button class="tower-btn" data-tower="sniper">
-            <div class="tower-name">Sniper</div>
-            <div class="tower-desc">Long range, huge damage</div>
-            <div class="tower-cost">$160</div>
-          </button>
-          <button class="tower-btn" data-tower="cryo">
-            <div class="tower-name">Cryo Tower</div>
-            <div class="tower-desc">Slows enemies by 50%</div>
-            <div class="tower-cost">$140</div>
-          </button>
-        </div>
+    <section>
+      <div class="hub-section-title">Games</div>
+      <div class="game-grid" id="gameGrid"></div>
+    </section>
 
-        <div class="panel-block">
-          <div class="panel-title">Wave</div>
-          <button id="startWave" class="action">Start Next Wave</button>
-          <div class="row">
-            <span>Speed</span>
-            <button id="speed" class="chip">1x</button>
-          </div>
-          <div class="row">
-            <span>Pause</span>
-            <button id="pause" class="chip">Pause</button>
-          </div>
-          <div class="row">
-            <span>Screen</span>
-            <button id="fullscreen" class="chip">Fullscreen</button>
-          </div>
-          <button id="openMenu" class="ghost">Menu</button>
-        </div>
-
-        <div class="panel-block" id="upgradePanel">
-          <div class="panel-title">Selected Tower</div>
-          <div class="upgrade-empty">Select a tower to upgrade.</div>
-          <div class="upgrade-details hidden">
-            <div class="upgrade-name" id="upgradeName"></div>
-            <div class="upgrade-stats" id="upgradeStats"></div>
-            <button id="upgradeBtn" class="action">Upgrade</button>
-            <button id="sellBtn" class="ghost">Sell</button>
-          </div>
-        </div>
-
-        <div class="panel-block small">
-          <div class="panel-title">Tips</div>
-          <p>Place towers along the path curves for maximum coverage.</p>
-          <p>Gun towers are best for early waves. Cannons handle clusters.</p>
-        </div>
-      </aside>
-    </main>
+    <footer class="hub-footer">
+      NAN Arcade — more games coming soon.
+    </footer>
   </div>
 
-  <script src="script.js"></script>
+  <script src="js/hub.js"></script>
 </body>
 </html>

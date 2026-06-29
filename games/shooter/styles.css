@@ -1,0 +1,208 @@
+body {
+  background: #1a1410;
+}
+
+.shooter-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 16px 16px 28px;
+}
+
+.shooter-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding: 0 4px;
+}
+
+.back-link {
+  font-family: "Press Start 2P", monospace;
+  font-size: 8px;
+  color: #8a8070;
+  text-decoration: none;
+  letter-spacing: 1px;
+}
+
+.back-link:hover {
+  color: #c4a46a;
+}
+
+.game-title {
+  font-family: "Press Start 2P", monospace;
+  font-size: 11px;
+  color: #c4a46a;
+  letter-spacing: 2px;
+  text-shadow: 2px 2px 0 #1a1410;
+}
+
+.shooter-main {
+  display: flex;
+  justify-content: center;
+}
+
+.crt-frame {
+  padding: 12px;
+  background: linear-gradient(180deg, #5a5048 0%, #3a3028 50%, #2a2018 100%);
+  border: 4px solid #6a6058;
+  border-radius: 4px;
+  box-shadow:
+    inset 0 0 20px rgba(0, 0, 0, 0.5),
+    0 8px 24px rgba(0, 0, 0, 0.6);
+}
+
+.canvas-wrap {
+  position: relative;
+  width: 640px;
+  max-width: 100%;
+  background: #000;
+  border: 3px solid #1a1410;
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.8);
+}
+
+canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  image-rendering: pixelated;
+  cursor: crosshair;
+}
+
+canvas:focus {
+  outline: none;
+}
+
+.hit-flash {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 200, 80, 0.25);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.05s ease-out;
+}
+
+.hit-flash.active {
+  opacity: 1;
+}
+
+.door-hint {
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 12px;
+  background: rgba(26, 20, 16, 0.92);
+  border: 2px solid #6a5040;
+  font-family: "Press Start 2P", monospace;
+  font-size: 8px;
+  color: #c4a46a;
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.door-hint.hidden {
+  display: none;
+}
+
+.intro-card {
+  max-width: 480px;
+}
+
+.intro-body {
+  text-align: left;
+  line-height: 2;
+  font-size: 8px;
+}
+
+.focus-prompt {
+  position: absolute;
+  bottom: 64px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 10px;
+  background: rgba(26, 20, 16, 0.9);
+  border: 2px solid #4a4038;
+  font-family: "Press Start 2P", monospace;
+  font-size: 7px;
+  color: #8a8070;
+  pointer-events: none;
+  white-space: nowrap;
+  line-height: 1.6;
+}
+
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+
+.overlay-card {
+  text-align: center;
+  padding: 24px 28px;
+  background: #3a3028;
+  border: 4px solid #c4a46a;
+  box-shadow: 4px 4px 0 #1a1410;
+}
+
+.overlay-title {
+  font-family: "Press Start 2P", monospace;
+  font-size: 14px;
+  color: #50d878;
+  margin-bottom: 14px;
+  line-height: 1.6;
+}
+
+.overlay-body {
+  font-family: "Press Start 2P", monospace;
+  font-size: 9px;
+  color: #c4a46a;
+  margin-bottom: 20px;
+  line-height: 1.8;
+  white-space: pre-line;
+}
+
+.retro-btn {
+  font-family: "Press Start 2P", monospace;
+  font-size: 10px;
+  padding: 12px 18px;
+  background: #c4a46a;
+  color: #1a1410;
+  border: 3px solid #1a1410;
+  box-shadow: 3px 3px 0 #1a1410;
+  cursor: pointer;
+}
+
+.retro-btn:hover {
+  background: #e8c878;
+}
+
+.retro-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 1px 1px 0 #1a1410;
+}
+
+@media (max-width: 680px) {
+  .shooter-page {
+    padding: 10px;
+  }
+
+  .crt-frame {
+    padding: 8px;
+  }
+
+  .focus-prompt {
+    font-size: 6px;
+    white-space: normal;
+    text-align: center;
+    max-width: 90%;
+    bottom: 52px;
+  }
+
+  .game-title {
+    font-size: 9px;
+  }
+}
