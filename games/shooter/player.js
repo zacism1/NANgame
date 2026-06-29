@@ -10,10 +10,19 @@ const player = {
 
 const keys = {};
 
+// Mobile joystick state
+let joystickActive = false;
+let joystickX = 0;
+let joystickY = 0;
+let lastTouchAngle = 0;
+let touchLookActive = false;
+
 function resetPlayer() {
   player.x = PLAYER_SPAWN.x;
   player.y = PLAYER_SPAWN.y;
   player.angle = PLAYER_SPAWN.angle;
+  joystickActive = false;
+  touchLookActive = false;
 }
 
 function tryMove(newX, newY) {
@@ -75,8 +84,32 @@ function updatePlayer(dt) {
     moveY += strafeY * speed;
   }
 
+  // Joystick input (mobile)
+  if (joystickActive) {
+    const jx = joystickX;
+    const jy = joystickY;
+    const mag = Math.hypot(jx, jy);
+    if (mag > 0.15) {  // Deadzone
+      const normX = jx / mag;
+      const normY = jy / mag;
+      // Forward/back relative to facing
+      moveX += dirX * speed * normY * 1.2;  // Y axis forward
+      moveY += dirY * speed * normY * 1.2;
+      // Strafe with X
+      moveX += strafeX * speed * normX * 0.9;
+      moveY += strafeY * speed * normX * 0.9;
+    }
+  }
+
   if (moveX !== 0 || moveY !== 0) {
     tryMove(player.x + moveX, player.y + moveY);
+  }
+
+  // Touch look / turn (separate from move joystick)
+  if (touchLookActive && lastTouchAngle !== 0) {
+    player.angle += lastTouchAngle * rot * 1.5;
+    lastTouchAngle *= 0.7; // decay
+    if (Math.abs(lastTouchAngle) < 0.01) lastTouchAngle = 0;
   }
 }
 
@@ -93,4 +126,139 @@ function bindInput(canvas) {
   });
 
   canvas.addEventListener("click", () => canvas.focus());
+
+  // Mobile touch joystick setup (called from game.js after DOM ready)
+  setupMobileControls();
+}
+
+function setupMobileControls() {
+  const joystick = document.getElementById("joystick");
+  const knob = document.getElementById("joystickKnob");
+  const shootBtn = document.getElementById("shootBtn");
+  const reloadBtn = document.getElementById("reloadBtn");
+  const interactBtn = document.getElementById("interactBtn");
+
+  if (!joystick || !knob) return;
+
+  let startX = 0, startY = 0;
+  let currentX = 0, currentY = 0;
+
+  function updateKnob(x, y) {
+    const rect = joystick.getBoundingClientRect();
+    const cx = rect.width / 2;
+    const cy = rect.height / 2;
+    const dx = x - rect.left - cx;
+    const dy = y - rect.top - cy;
+    const maxDist = rect.width / 2 - 20;
+    const dist = Math.hypot(dx, dy);
+    const scale = dist > maxDist ? maxDist / dist : 1;
+    const kx = dx * scale;
+    const ky = dy * scale;
+
+    knob.style.transform = `translate(calc(-50% + ${kx}px), calc(-50% + ${ky}px))`;
+    joystickX = kx / (rect.width / 2);
+    joystickY = ky / (rect.height / 2);
+  }
+
+  function resetKnob() {
+    knob.style.transform = "translate(-50%, -50%)";
+    joystickX = 0;
+    joystickY = 0;
+    joystickActive = false;
+  }
+
+  // Joystick touch
+  joystick.addEventListener("touchstart", (e) => {
+    e.preventDefault();
+    joystickActive = true;
+    const touch = e.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+    currentX = startX;
+    currentY = startY;
+    updateKnob(currentX, currentY);
+  }, { passive: false });
+
+  joystick.addEventListener("touchmove", (e) => {
+    e.preventDefault();
+    if (!joystickActive) return;
+    const touch = e.touches[0];
+    currentX = touch.clientX;
+    currentY = touch.clientY;
+    updateKnob(currentX, currentY);
+  }, { passive: false });
+
+  joystick.addEventListener("touchend", (e) => {
+    e.preventDefault();
+    resetKnob();
+  });
+
+  joystick.addEventListener("touchcancel", (e) => {
+    e.preventDefault();
+    resetKnob();
+  });
+
+  // Separate touch look on canvas (right side drag for turning)
+  let lookStartX = 0;
+  canvas.addEventListener("touchstart", (e) => {
+    if (e.touches.length === 1 && !joystick.contains(e.target)) {
+      touchLookActive = true;
+      lookStartX = e.touches[0].clientX;
+      lastTouchAngle = 0;
+    }
+  }, { passive: true });
+
+  canvas.addEventListener("touchmove", (e) => {
+    if (touchLookActive && e.touches.length === 1) {
+      const dx = e.touches[0].clientX - lookStartX;
+      lastTouchAngle = dx * 0.008; // sensitivity
+      lookStartX = e.touches[0].clientX;
+    }
+  }, { passive: true });
+
+  canvas.addEventListener("touchend", () => {
+    touchLookActive = false;
+    lastTouchAngle = 0;
+  });
+
+  // Action buttons
+  if (shootBtn) {
+    shootBtn.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      keys[" "] = true;
+      if (typeof tryShoot === "function" && tryShoot()) {
+        if (typeof flashHit === "function") flashHit();
+      }
+    });
+    shootBtn.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      keys[" "] = false;
+    });
+  }
+
+  if (reloadBtn) {
+    reloadBtn.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      keys.r = true;
+      keys.R = true;
+    });
+    reloadBtn.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      keys.r = false;
+      keys.R = false;
+    });
+  }
+
+  if (interactBtn) {
+    interactBtn.addEventListener("touchstart", (e) => {
+      e.preventDefault();
+      keys.e = true;
+      keys.E = true;
+    });
+    interactBtn.addEventListener("touchend", (e) => {
+      e.preventDefault();
+      keys.e = false;
+      keys.E = false;
+    });
+  }
 }
