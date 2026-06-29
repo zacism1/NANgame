@@ -58,14 +58,14 @@ function renderStatusBar(ctx, width, totalHeight, viewHeight, fps = 0) {
 
   const faceFrameX = 6;
   const faceFrameY = y + 5;
-  const faceFrameW = 58;
-  const faceFrameH = h - 10;
+  const faceFrameW = 68;  // Bigger
+  const faceFrameH = h - 8;  // Slightly taller
 
   drawBevelRect(ctx, faceFrameX, faceFrameY, faceFrameW, faceFrameH, "#1e1e2e", "#4a4a62", "#080810");
 
   if (faceImage.complete && faceImage.naturalWidth > 0) {
     const facePad = 4;
-    const faceSize = faceFrameH - facePad * 2;
+    const faceSize = faceFrameH - facePad * 2 + 4;  // Slightly bigger draw size
     ctx.drawImage(faceImage, faceFrameX + facePad, faceFrameY + facePad, faceSize, faceSize);
   }
 
