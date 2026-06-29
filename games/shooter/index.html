@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>Escape from NAN's Jail — NAN Arcade</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -23,7 +23,7 @@
           <canvas id="game" tabindex="0"></canvas>
           <div class="hit-flash" id="hitFlash"></div>
           <div class="door-hint hidden" id="doorHint">[E] OPEN DOOR</div>
-          <div class="focus-prompt" id="focusPrompt">WASD MOVE · ARROWS TURN · SPACE SHOOT · R RELOAD · E DOORS</div>
+          <div class="focus-prompt" id="focusPrompt">WASD MOVE · ARROWS TURN · SPACE SHOOT · R RELOAD · E DOORS<br><span class="mobile-hint">(Landscape: Use joystick + buttons)</span></div>
           <div class="overlay" id="introOverlay">
             <div class="overlay-card intro-card">
               <div class="overlay-title">ESCAPE FROM NAN'S JAIL</div>
@@ -40,6 +40,22 @@
               <div class="overlay-title" id="overlayTitle">YOU ESCAPED!</div>
               <div class="overlay-body" id="overlayBody">SCORE: 0</div>
               <button id="restartBtn" class="retro-btn">PLAY AGAIN</button>
+            </div>
+          </div>
+
+          <!-- Mobile touch controls (shown in landscape via JS) -->
+          <div id="mobileControls" class="mobile-controls hidden">
+            <div class="joystick-area">
+              <div class="joystick" id="joystick">
+                <div class="joystick-base"></div>
+                <div class="joystick-knob" id="joystickKnob"></div>
+              </div>
+              <div class="joystick-label">MOVE</div>
+            </div>
+            <div class="action-buttons">
+              <button class="action-btn" id="shootBtn">SHOOT</button>
+              <button class="action-btn" id="reloadBtn">RELOAD</button>
+              <button class="action-btn" id="interactBtn">E</button>
             </div>
           </div>
         </div>
