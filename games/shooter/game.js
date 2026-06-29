@@ -40,12 +40,34 @@ const ui = {
   doorHint: document.getElementById("doorHint"),
 };
 
+// Mobile controls reference
+let mobileControls = null;
+
+function updateMobileControlsVisibility() {
+  if (!mobileControls) {
+    mobileControls = document.getElementById("mobileControls");
+  }
+  if (!mobileControls) return;
+
+  const isLandscape = window.innerWidth > window.innerHeight || (window.matchMedia && window.matchMedia("(orientation: landscape)").matches);
+  const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 700;
+
+  if (isLandscape && isMobile && gameState !== "intro") {
+    mobileControls.classList.remove("hidden");
+    if (ui.focusPrompt) ui.focusPrompt.style.display = "none"; // hide keyboard hint in mobile landscape
+  } else {
+    mobileControls.classList.add("hidden");
+    if (ui.focusPrompt) ui.focusPrompt.style.display = "";
+  }
+}
+
 function showWin() {
   gameState = "won";
   ui.overlayTitle.textContent = "YOU ESCAPED!";
   ui.overlayBody.textContent =
     "You fought through Nan's jail guards and broke free. Zac is out — for now.\n\nSCORE: " + gameStats.score;
   ui.overlay.classList.remove("hidden");
+  updateMobileControlsVisibility();
 }
 
 function showLose() {
@@ -53,6 +75,7 @@ function showLose() {
   ui.overlayTitle.textContent = "CAUGHT!";
   ui.overlayBody.textContent = "Nan's guards got you. The jail doors slam shut...\n\nTry again?";
   ui.overlay.classList.remove("hidden");
+  updateMobileControlsVisibility();
 }
 
 function resetGame() {
@@ -70,6 +93,7 @@ function resetGame() {
   gameState = "playing";
   ui.overlay.classList.add("hidden");
   ui.introOverlay.classList.add("hidden");
+  updateMobileControlsVisibility();
 }
 
 function startIntro() {
@@ -81,6 +105,7 @@ function startIntro() {
   gameState = "intro";
   ui.overlay.classList.add("hidden");
   ui.introOverlay.classList.remove("hidden");
+  updateMobileControlsVisibility();
 }
 
 function flashHit() {
@@ -187,6 +212,22 @@ function gameLoop(timestamp) {
   requestAnimationFrame(gameLoop);
 }
 
+function initOrientationListeners() {
+  updateMobileControlsVisibility();
+  window.addEventListener("resize", () => {
+    clearTimeout(initOrientationListeners._t);
+    initOrientationListeners._t = setTimeout(updateMobileControlsVisibility, 80);
+  });
+  window.addEventListener("orientationchange", () => {
+    setTimeout(updateMobileControlsVisibility, 200);
+  });
+  if (window.matchMedia) {
+    const mq = window.matchMedia("(orientation: landscape)");
+    if (mq.addEventListener) mq.addEventListener("change", updateMobileControlsVisibility);
+    else if (mq.addListener) mq.addListener(updateMobileControlsVisibility);
+  }
+}
+
 bindInput(canvas);
 
 canvas.addEventListener("click", () => {
@@ -204,4 +245,5 @@ document.getElementById("introStart").addEventListener("click", () => {
 });
 
 startIntro();
+initOrientationListeners();
 requestAnimationFrame(gameLoop);
