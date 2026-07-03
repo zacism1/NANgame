@@ -394,13 +394,13 @@
         introTitle: 'The Great Food Emergency!',
         intro: 'Zac has gone snack-mad! He and his minions are emptying every pantry on Earth. Help Nan race across four worlds, rescue the food, and stop the final feast.',
         begin: 'START ADVENTURE',
-        controls: 'Move with ◀ ▶ or A D · Jump with Space, W, or ↑',
+        controls: 'Move with ◀ ▶ or A D · Jump twice with Space, W, or ↑',
         world: 'WORLD',
         food: 'FOOD',
         score: 'SCORE',
         ready: 'READY?',
         go: 'GO!',
-        jump: 'JUMP',
+        jump: 'JUMP ×2',
         moveLeft: 'Move left',
         moveRight: 'Move right',
         jumpLabel: 'Jump',
@@ -440,13 +440,13 @@
         introTitle: 'วิกฤตอาหารครั้งใหญ่!',
         intro: 'แซคคลั่งของกิน! เขากับลูกน้องกำลังกวาดอาหารจากทุกครัวบนโลก ช่วยแนนฝ่าด่านทั้งสี่ กู้อาหาร และหยุดงานเลี้ยงมื้อสุดท้าย',
         begin: 'เริ่มการผจญภัย',
-        controls: 'เดินด้วย ◀ ▶ หรือ A D · กระโดดด้วย Space, W หรือ ↑',
+        controls: 'เดินด้วย ◀ ▶ หรือ A D · กด Space, W หรือ ↑ สองครั้งเพื่อกระโดดสองชั้น',
         world: 'ด่าน',
         food: 'อาหาร',
         score: 'คะแนน',
         ready: 'พร้อมไหม?',
         go: 'ไปเลย!',
-        jump: 'กระโดด',
+        jump: 'กระโดด ×2',
         moveLeft: 'เดินซ้าย',
         moveRight: 'เดินขวา',
         jumpLabel: 'กระโดด',
@@ -563,6 +563,7 @@
       lives: 3,
       collected: 0,
       jumpCount: 0,
+      jumpPeakY: 526,
       level: null,
       cameraX: 0,
       shake: 0,
@@ -580,6 +581,9 @@
       onGround: false,
       coyote: 0,
       jumpBuffer: 0,
+      airJumps: 1,
+      jumpCutGrace: 0,
+      jumpCutQueued: false,
       facing: 1,
       runCycle: 0
     };
@@ -622,6 +626,7 @@
 
     function sfx(name) {
       if (name === 'jump') { tone(390, .08, 'square', .22); tone(590, .09, 'square', .14, .05); }
+      if (name === 'doubleJump') { tone(620, .07, 'square', .2); tone(930, .1, 'square', .15, .045); }
       if (name === 'food') { tone(880, .05, 'square', .2); tone(1320, .08, 'square', .18, .045); }
       if (name === 'stomp') { tone(160, .08, 'sawtooth', .2); tone(320, .08, 'square', .16, .055); }
       if (name === 'hurt') { tone(170, .28, 'sawtooth', .2); tone(95, .35, 'square', .16, .11); }
@@ -713,7 +718,8 @@
     }
 
     function resetPlayer() {
-      Object.assign(player, { x: 74, y: 500, prevY: 500, vx: 0, vy: 0, onGround: false, coyote: 0, jumpBuffer: 0, facing: 1, runCycle: 0 });
+      Object.assign(player, { x: 74, y: 500, prevY: 500, vx: 0, vy: 0, onGround: false, coyote: 0, jumpBuffer: 0, airJumps: 1, jumpCutGrace: 0, jumpCutQueued: false, facing: 1, runCycle: 0 });
+      game.jumpPeakY = player.y;
       game.cameraX = 0;
       clearInput();
     }
@@ -831,6 +837,30 @@
       document.querySelectorAll('.control-btn').forEach(button => button.classList.remove('pressed'));
     }
 
+    const PRIMARY_JUMP_SPEED = 13.35;
+    const DOUBLE_JUMP_SPEED = 12.6;
+
+    function launchJump(isDoubleJump = false) {
+      if (!isDoubleJump) game.jumpPeakY = player.y;
+      player.vy = -(isDoubleJump ? DOUBLE_JUMP_SPEED : PRIMARY_JUMP_SPEED);
+      player.onGround = false;
+      player.coyote = 0;
+      player.jumpBuffer = 0;
+      input.jumpPressed = false;
+      player.jumpCutGrace = isDoubleJump ? 24 : 3;
+      player.jumpCutQueued = false;
+      if (isDoubleJump) player.airJumps--;
+      game.jumpCount++;
+      sfx(isDoubleJump ? 'doubleJump' : 'jump');
+      burst(
+        player.x + player.w / 2,
+        player.y + player.h,
+        isDoubleJump ? '#ffd84a' : '#e9f4ff',
+        isDoubleJump ? 9 : 5,
+        isDoubleJump ? 2.5 : 1.8
+      );
+    }
+
     const keyMap = {
       ArrowLeft: 'left', KeyA: 'left',
       ArrowRight: 'right', KeyD: 'right',
@@ -895,14 +925,10 @@
       // activation and very quick taps do this), so launch immediately when
       // grounded. Held pointers still use the buffered/variable-height path.
       if (player.onGround || player.coyote > 0) {
-        player.vy = -12.25;
-        player.onGround = false;
-        player.coyote = 0;
-        player.jumpBuffer = 0;
-        game.jumpCount++;
-        sfx('jump');
-        burst(player.x + player.w / 2, player.y + player.h, '#e9f4ff', 5, 1.8);
-      } else {
+        launchJump(false);
+      } else if (!input.jumpReleased) {
+        // Keyboard-activated clicks can request the mid-air jump directly.
+        // Pointer taps already queued it during pointerdown.
         input.jumpPressed = true;
       }
     });
@@ -947,19 +973,22 @@
 
       if (input.jumpPressed) player.jumpBuffer = 8;
       else player.jumpBuffer = Math.max(0, player.jumpBuffer - 1);
-      if (player.onGround) player.coyote = 7;
-      else player.coyote = Math.max(0, player.coyote - 1);
-
-      if (player.jumpBuffer > 0 && player.coyote > 0) {
-        player.vy = -12.25;
-        player.onGround = false;
-        player.coyote = 0;
-        player.jumpBuffer = 0;
-        game.jumpCount++;
-        sfx('jump');
-        burst(player.x + player.w / 2, player.y + player.h, '#e9f4ff', 5, 1.8);
+      if (player.onGround) {
+        player.coyote = 7;
+        player.airJumps = 1;
+      } else {
+        player.coyote = Math.max(0, player.coyote - 1);
       }
-      if (input.jumpReleased && player.vy < -4.1) player.vy *= .52;
+
+      if (player.jumpBuffer > 0 && (player.coyote > 0 || player.airJumps > 0)) {
+        launchJump(player.coyote <= 0);
+      }
+      if (input.jumpReleased) player.jumpCutQueued = true;
+      player.jumpCutGrace = Math.max(0, player.jumpCutGrace - 1);
+      if (player.jumpCutQueued && player.jumpCutGrace === 0) {
+        if (player.vy < -4.1) player.vy *= .65;
+        player.jumpCutQueued = false;
+      }
 
       player.vy = Math.min(14.5, player.vy + .64);
 
@@ -975,12 +1004,14 @@
       // Vertical platform collision.
       player.onGround = false;
       player.y += player.vy;
+      game.jumpPeakY = Math.min(game.jumpPeakY, player.y);
       for (const platform of level.platforms) {
         if (!overlaps(player, platform)) continue;
         if (player.vy >= 0 && player.prevY + player.h <= platform.y + 9) {
           player.y = platform.y - player.h;
           player.vy = 0;
           player.onGround = true;
+          player.airJumps = 1;
         } else if (player.vy < 0 && player.prevY >= platform.y + platform.h - 8) {
           player.y = platform.y + platform.h;
           player.vy = 0;
@@ -1013,6 +1044,7 @@
           enemy.hp--;
           player.y = enemy.y - player.h;
           player.vy = enemy.boss ? -11.2 : -9.4;
+          player.airJumps = 1;
           enemy.stun = enemy.boss ? 48 : 0;
           game.shake = enemy.boss ? 11 : 5;
           burst(enemy.x + enemy.w / 2, enemy.y + 6, enemy.boss ? '#ff6b35' : '#ffd84a', enemy.boss ? 18 : 10, enemy.boss ? 4.2 : 2.8);
@@ -1386,6 +1418,8 @@
       canvas.dataset.nanAsset = nanImage.complete && nanImage.naturalWidth > 0 ? 'loaded' : 'fallback';
       canvas.dataset.zacAsset = zacImage.complete && zacImage.naturalWidth > 0 ? 'loaded' : 'fallback';
       canvas.dataset.jumps = String(game.jumpCount);
+      canvas.dataset.airJumps = String(player.airJumps);
+      canvas.dataset.jumpPeakY = game.jumpPeakY.toFixed(1);
       drawBackground();
       if (game.level) {
         drawWorld();
