@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Super NAN Bros • NAN Arcade</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<style>
+  body { margin:0; background:#0a0a0a; color:#fff; font-family: system-ui, monospace; overflow:hidden; touch-action: none; }
+  canvas { display:block; margin:0 auto; border: 4px solid #333; image-rendering: pixelated; background:#1a1a2e; }
+  #ui { position:absolute; top:10px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); padding:6px 16px; border-radius:8px; font-size:16px; display:flex; gap:20px; align-items:center; z-index:10; }
+  #touch-controls { position:absolute; bottom:10px; left:0; right:0; display:flex; justify-content:space-between; padding:0 15px; z-index:20; }
+  .touch-btn { width:70px; height:70px; background:rgba(255,255,255,0.15); border:3px solid #0f0; border-radius:12px; color:#0f0; font-size:28px; display:flex; align-items:center; justify-content:center; user-select:none; }
+  .touch-btn:active { background:#0f0; color:#000; }
+  #jump-btn { width:90px; }
+</style>
+</head>
+<body>
+
+<canvas id="game" width="800" height="600"></canvas>
+
+<div id="ui">
+  <div>Level: <span id="level">1</span></div>
+  <div>Score: <span id="score">0</span></div>
+  <div id="status"></div>
+</div>
+
+<!-- Mobile Touch Controls -->
+<div id="touch-controls">
+  <div style="display:flex; gap:10px;">
+    <div class="touch-btn" id="left-btn">◀</div>
+    <div class="touch-btn" id="right-btn">▶</div>
+  </div>
+  <div class="touch-btn" id="jump-btn" style="font-size:32px;">▲</div>
+</div>
+
+<script>
+// ==================== SUPER NAN BROS - FULL VERSION ====================
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d', { alpha: false });
+
+const PLAYER_IMG = new Image();
+PLAYER_IMG.src = '../../assets/nan/enemy.png';
+
+const ENEMY_IMG = new Image();
+ENEMY_IMG.src = '../../assets/nan/zac.png';
+
+let audioCtx;
+let musicInterval = null;
+
+// Game state
+let player = { x: 80, y: 400, vx: 0, vy: 0, width: 44, height: 44, onGround: false, facingLeft: false };
+let cameraX = 0;
+let score = 0;
+let currentLevel = 1;
+let gameState = 'start';
+let keys = {};
+let coins = [];
+let enemies = [];
+let platforms = [];
+
+// Level data
+const levels = [
+  {
+    platforms: [
+      {x:0, y:520, w:700, h:80}, {x:800, y:520, w:400, h:80}, {x:1300, y:520, w:700, h:80},
+      {x:600, y:420, w:100, h:20}, {x:900, y:350, w:120, h:20}, {x:1150, y:280, w:80, h:20}
+    ],
+    enemies: [{x:950, y:480, range:80}],
+    coins: [{x:650, y:380}, {x:950, y:310}, {x:1200, y:240}],
+    goalX: 1850
+  },
+  {
+    platforms: [
+      {x:0, y:520, w:500, h:80}, {x:600, y:520, w:300, h:80}, {x:1000, y:520, w:500, h:80}, {x:1600, y:520, w:600, h:80},
+      {x:550, y:420, w:80, h:20}, {x:850, y:380, w:100, h:20}, {x:1100, y:300, w:90, h:20}, {x:1350, y:420, w:80, h:20}
+    ],
+    enemies: [{x:700, y:480, range:100}, {x:1250, y:480, range:70}],
+    coins: [{x:580, y:380}, {x:900, y:340}, {x:1150, y:260}, {x:1400, y:380}],
+    goalX: 2050
+  },
+  {
+    platforms: [
+      {x:0, y:520, w:400, h:80}, {x:500, y:520, w:250, h:80}, {x:850, y:520, w:300, h:80}, {x:1250, y:520, w:400, h:80}, {x:1750, y:520, w:500, h:80},
+      {x:450, y:400, w:70, h:20}, {x:780, y:350, w:90, h:20}, {x:1050, y:280, w:70, h:20}, {x:1400, y:380, w:80, h:20}
+    ],
+    enemies: [{x:600, y:480, range:90}, {x:1000, y:480, range:60}, {x:1500, y:480, range:80}],
+    coins: [{x:480, y:360}, {x:820, y:310}, {x:1100, y:240}, {x:1450, y:340}, {x:1850, y:480}],
+    goalX: 2150
+  }
+];
+
+let currentLevelData = levels[0];
+
+// ==================== AUDIO (Retro Chiptune) ====================
+function initAudio() {
+  if (audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+}
+
+function playNote(freq, duration, type = 'square', volume = 0.3) {
+  if (!audioCtx) return;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  const filter = audioCtx.createBiquadFilter();
+
+  osc.type = type;
+  osc.frequency.value = freq;
+  filter.type = 'lowpass';
+  filter.frequency.value = 1200;
+
+  gain.gain.value = volume;
+
+  const decay = audioCtx.createGain();
+  decay.gain.value = 1;
+  decay.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+
+  osc.connect(filter);
+  filter.connect(gain);
+  gain.connect(decay);
+  decay.connect(audioCtx.destination);
+
+  osc.start();
+  osc.stop(audioCtx.currentTime + duration + 0.1);
+}
+
+function startMusic() {
+  if (musicInterval) clearInterval(musicInterval);
+  initAudio();
+
+  let noteIndex = 0;
+  const melody = [262, 294, 330, 349, 392, 440, 494, 523];
+
+  musicInterval = setInterval(() => {
+    if (gameState !== 'playing') return;
+    const freq = melody[noteIndex % melody.length];
+    playNote(freq, 0.18, 'square', 0.25);
+    if (noteIndex % 4 === 0) playNote(freq * 0.5, 0.25, 'sawtooth', 0.15);
+    noteIndex++;
+  }, 180);
+}
+
+function stopMusic() {
+  if (musicInterval) {
+    clearInterval(musicInterval);
+    musicInterval = null;
+  }
+}
+
+// ==================== LEVEL LOADING ====================
+function loadLevel(levelNum) {
+  currentLevel = levelNum;
+  currentLevelData = levels[levelNum - 1];
+
+  player.x = 80;
+  player.y = 400;
+  player.vx = 0;
+  player.vy = 0;
+  cameraX = 0;
+
+  platforms = currentLevelData.platforms.map(p => ({...p}));
+
+  enemies = currentLevelData.enemies.map(e => ({
+    x: e.x, y: e.y, width: 36, height: 36,
+    vx: 1.2, startX: e.x, range: e.range, alive: true
+  }));
+
+  coins = currentLevelData.coins.map(c => ({x: c.x, y: c.y, width: 20, height: 20, collected: false}));
+}
+
+// ==================== INPUT ====================
+window.addEventListener('keydown', e => {
+  keys[e.key] = true;
+  if (gameState === 'start' && (e.key === ' ' || e.key === 'Enter')) startGame();
+  if (gameState === 'levelComplete' && e.key === ' ') nextLevel();
+  if ((e.key === 'r' || e.key === 'R') && gameState === 'gameOver') restartGame();
+});
+
+window.addEventListener('keyup', e => keys[e.key] = false);
+
+// Touch controls
+function setupTouchControls() {
+  const leftBtn = document.getElementById('left-btn');
+  const rightBtn = document.getElementById('right-btn');
+  const jumpBtn = document.getElementById('jump-btn');
+
+  function addTouch(el, key) {
+    el.addEventListener('touchstart', e => { e.preventDefault(); keys[key] = true; if (gameState === 'start') startGame(); });
+    el.addEventListener('touchend', e => { e.preventDefault(); keys[key] = false; });
+    el.addEventListener('mousedown', e => { e.preventDefault(); keys[key] = true; if (gameState === 'start') startGame(); });
+    el.addEventListener('mouseup', e => { e.preventDefault(); keys[key] = false; });
+    el.addEventListener('mouseleave', e => { keys[key] = false; });
+  }
+
+  addTouch(leftBtn, 'ArrowLeft');
+  addTouch(rightBtn, 'ArrowRight');
+  addTouch(jumpBtn, ' ');
+
+  canvas.addEventListener('touchstart', e => {
+    if (gameState === 'playing' && player.onGround) {
+      player.vy = -13.5;
+      player.onGround = false;
+    }
+  });
+}
+
+// ==================== PHYSICS & COLLISION ====================
+function updatePlayer() {
+  if (gameState !== 'playing') return;
+
+  const speed = 5.5;
+  const friction = 0.82;
+
+  if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
+    player.vx = -speed;
+    player.facingLeft = true;
+  } else if (keys['ArrowRight'] || keys['d'] || keys['D']) {
+    player.vx = speed;
+    player.facingLeft = false;
+  } else {
+    player.vx *= friction;
+  }
+
+  if ((keys[' '] || keys['Space'] || keys['w'] || keys['W']) && player.onGround) {
+    player.vy = -13.5;
+    player.onGround = false;
+    playNote(660, 0.1, 'square', 0.4);
+  }
+
+  player.vy += 0.65;
+  if (player.vy > 14) player.vy = 14;
+
+  player.x += player.vx;
+  player.y += player.vy;
+
+  player.onGround = false;
+  for (let p of platforms) {
+    if (player.x < p.x + p.w && player.x + player.width > p.x &&
+        player.y + player.height > p.y && player.y < p.y + p.h) {
+
+      if (player.vy > 0 && player.y + player.height - player.vy <= p.y + 5) {
+        player.y = p.y - player.height;
+        player.vy = 0;
+        player.onGround = true;
+      } else if (player.vy < 0) {
+        player.y = p.y + p.h;
+        player.vy = 0;
+      }
+    }
+  }
+
+  if (player.x < 0) player.x = 0;
+  if (player.y > 650) die();
+}
+
+function updateEnemies() {
+  for (let enemy of enemies) {
+    if (!enemy.alive) continue;
+
+    enemy.x += enemy.vx;
+
+    if (enemy.x > enemy.startX + enemy.range || enemy.x < enemy.startX - enemy.range) {
+      enemy.vx *= -1;
+    }
+
+    if (player.x < enemy.x + enemy.width && player.x + player.width > enemy.x &&
+        player.y < enemy.y + enemy.height && player.y + player.height > enemy.y) {
+
+      if (player.vy > 0 && player.y + player.height - 10 < enemy.y + 10) {
+        enemy.alive = false;
+        player.vy = -10;
+        score += 200;
+        playNote(880, 0.15, 'square', 0.5);
+      } else {
+        die();
+      }
+    }
+  }
+}
+
+function updateCoins() {
+  for (let coin of coins) {
+    if (coin.collected) continue;
+    if (player.x < coin.x + coin.width && player.x + player.width > coin.x &&
+        player.y < coin.y + coin.height && player.y + player.height > coin.y) {
+      coin.collected = true;
+      score += 100;
+      playNote(1200, 0.1, 'square', 0.6);
+    }
+  }
+}
+
+function updateCamera() {
+  cameraX = player.x - canvas.width * 0.35;
+  if (cameraX < 0) cameraX = 0;
+}
+
+function checkWin() {
+  if (player.x > currentLevelData.goalX) {
+    gameState = 'levelComplete';
+    score += 500;
+    stopMusic();
+    if (currentLevel < levels.length) {
+      document.getElementById('status').textContent = 'Level Complete! Press SPACE';
+    } else {
+      document.getElementById('status').textContent = 'YOU WIN! Final Score: ' + score;
+    }
+  }
+}
+
+function die() {
+  gameState = 'gameOver';
+  stopMusic();
+  document.getElementById('status').textContent = 'Game Over - Press R to restart';
+}
+
+// ==================== DRAW ====================
+function draw() {
+  ctx.fillStyle = '#0f0f23';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  ctx.fillStyle = '#4a4a6a';
+  for (let p of platforms) {
+    ctx.fillRect(p.x - cameraX, p.y, p.w, p.h);
+    ctx.fillStyle = '#6a6a8a';
+    ctx.fillRect(p.x - cameraX, p.y, p.w, 6);
+    ctx.fillStyle = '#4a4a6a';
+  }
+
+  ctx.fillStyle = '#ffcc00';
+  for (let coin of coins) {
+    if (!coin.collected) {
+      ctx.beginPath();
+      ctx.arc(coin.x - cameraX + 10, coin.y + 10, 9, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  for (let enemy of enemies) {
+    if (!enemy.alive) continue;
+    if (ENEMY_IMG.complete) {
+      ctx.drawImage(ENEMY_IMG, enemy.x - cameraX, enemy.y, enemy.width, enemy.height);
+    } else {
+      ctx.fillStyle = '#f44';
+      ctx.fillRect(enemy.x - cameraX, enemy.y, enemy.width, enemy.height);
+    }
+  }
+
+  if (PLAYER_IMG.complete) {
+    ctx.save();
+    if (player.facingLeft) {
+      ctx.translate(player.x - cameraX + player.width, player.y);
+      ctx.scale(-1, 1);
+      ctx.drawImage(PLAYER_IMG, 0, 0, player.width, player.height);
+    } else {
+      ctx.drawImage(PLAYER_IMG, player.x - cameraX, player.y, player.width, player.height);
+    }
+    ctx.restore();
+  }
+
+  ctx.fillStyle = '#22ff22';
+  ctx.fillRect(currentLevelData.goalX - cameraX, 450, 50, 70);
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(currentLevelData.goalX - cameraX + 18, 420, 4, 30);
+
+  if (gameState === 'start') {
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillRect(0, 180, canvas.width, 260);
+    ctx.fillStyle = '#0f0';
+    ctx.font = 'bold 42px monospace';
+    ctx.fillText('SUPER NAN BROS', 210, 260);
+    ctx.font = '22px monospace';
+    ctx.fillText('Arrow Keys / WASD + SPACE to jump', 180, 310);
+    ctx.fillText('Touch controls on mobile', 250, 345);
+    ctx.fillText('Press SPACE or tap to start', 230, 390);
+  }
+
+  if (gameState === 'levelComplete') {
+    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+    ctx.fillRect(0, 200, canvas.width, 220);
+    ctx.fillStyle = '#0f0';
+    ctx.font = 'bold 36px monospace';
+    ctx.fillText('LEVEL ' + currentLevel + ' COMPLETE!', 200, 280);
+    if (currentLevel < levels.length) {
+      ctx.font = '22px monospace';
+      ctx.fillText('Press SPACE for next level', 240, 330);
+    }
+  }
+
+  if (gameState === 'gameOver') {
+    ctx.fillStyle = 'rgba(0,0,0,0.8)';
+    ctx.fillRect(0, 200, canvas.width, 220);
+    ctx.fillStyle = '#f44';
+    ctx.font = 'bold 48px monospace';
+    ctx.fillText('GAME OVER', 260, 290);
+    ctx.font = '22px monospace';
+    ctx.fillText('Press R to restart', 300, 340);
+  }
+}
+
+// ==================== MAIN LOOP ====================
+function update() {
+  if (gameState !== 'playing') return;
+
+  updatePlayer();
+  updateEnemies();
+  updateCoins();
+  updateCamera();
+  checkWin();
+
+  document.getElementById('level').textContent = currentLevel;
+  document.getElementById('score').textContent = score;
+}
+
+function gameLoop() {
+  update();
+  draw();
+  requestAnimationFrame(gameLoop);
+}
+
+// ==================== GAME FLOW ====================
+function startGame() {
+  if (gameState !== 'start') return;
+  gameState = 'playing';
+  loadLevel(1);
+  startMusic();
+  document.getElementById('status').textContent = '';
+}
+
+function nextLevel() {
+  if (currentLevel < levels.length) {
+    loadLevel(currentLevel + 1);
+    gameState = 'playing';
+    startMusic();
+    document.getElementById('status').textContent = '';
+  } else {
+    gameState = 'win';
+    document.getElementById('status').textContent = 'Congratulations! You beat all levels!';
+  }
+}
+
+function restartGame() {
+  score = 0;
+  loadLevel(1);
+  gameState = 'start';
+  document.getElementById('status').textContent = '';
+  stopMusic();
+}
+
+// ==================== BOOT ====================
+function boot() {
+  setupTouchControls();
+  loadLevel(1);
+  gameLoop();
+
+  setTimeout(() => {
+    if (gameState === 'start') {
+      document.getElementById('status').textContent = 'Tap or press SPACE';
+    }
+  }, 800);
+}
+
+boot();
+</script>
+
+</body>
+</html>

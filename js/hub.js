@@ -15,6 +15,14 @@ const GAMES = [
     status: "playable",
     icon: "assets/nan/enemy.png",
   },
+  {
+    id: "platformer",
+    title: "Super NAN Bros",
+    description: "Classic multi-level Mario-style platformer. Run, jump on enemies (zac.png), collect coins!",
+    path: "games/platformer/",
+    status: "playable",
+    icon: "assets/nan/enemy.png",
+  },
 ];
 
 function renderGameCards() {
@@ -32,7 +40,7 @@ function renderGameCards() {
       <h2 class="game-card-title">${game.title}</h2>
       <p class="game-card-desc">${game.description}</p>
       <div class="game-card-footer">
-        <span class="game-badge ${playable ? "play" : "soon"}">${playable ? "Play Now" : "Coming Soon"}</span>
+        <span class="game-badge ${playable ? "play" : "soon"}>${playable ? "Play Now" : "Coming Soon"}</span>
         ${playable ? '<span class="game-card-cta">Launch →</span>' : ""}
       </div>
     `;
