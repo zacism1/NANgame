@@ -2,43 +2,41 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Super NAN Bros • NAN Arcade</title>
+<title>Super NAN Bros</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <style>
-  body { margin:0; background:#0a0a0a; color:#fff; font-family: system-ui, monospace; overflow:hidden; touch-action: none; }
-  #game-container { position:relative; width:100%; max-width:480px; margin:0 auto; }
+  body { margin:0; background:#111; color:#fff; font-family: system-ui, monospace; overflow:hidden; }
+  #game-container { position:relative; max-width:480px; margin:0 auto; background:#000; }
   canvas { 
     display:block; 
-    width:100% !important; 
-    height:auto !important;
-    border: 4px solid #222; 
-    image-rendering: pixelated; 
+    width:100%; 
+    max-width:480px;
+    height:auto;
+    border: none;
+    image-rendering: crisp-edges;
     background:#5c94fc;
-    touch-action: none;
   }
-  #ui { 
-    position:absolute; top:8px; left:50%; transform:translateX(-50%); 
-    background:rgba(0,0,0,0.65); padding:5px 14px; border-radius:6px; 
-    font-size:14px; display:flex; gap:16px; align-items:center; z-index:10; 
-    white-space:nowrap;
+  #ui {
+    position:absolute; top:10px; left:50%; transform:translateX(-50%);
+    background:rgba(0,0,0,0.6); padding:6px 16px; border-radius:6px;
+    font-size:15px; display:flex; gap:20px; z-index:10;
   }
-  #touch-controls { 
-    position:absolute; bottom:8px; left:0; right:0; 
-    display:flex; justify-content:space-between; 
-    padding:0 12px; z-index:20; pointer-events:none;
+  #touch-controls {
+    position:absolute; bottom:10px; left:0; right:0;
+    display:flex; justify-content:space-between; padding:0 15px; z-index:20;
   }
-  .touch-btn { 
-    width:68px; height:68px; 
-    background:rgba(0,0,0,0.5); 
-    border:3px solid #0f0; 
-    border-radius:50%; 
-    color:#0f0; font-size:26px; 
-    display:flex; align-items:center; justify-content:center; 
-    user-select:none; pointer-events:all;
-    box-shadow: 0 4px 0 #003300;
+  .touch-btn {
+    width:64px; height:64px;
+    background:rgba(255,255,255,0.15);
+    border:3px solid #0f0;
+    border-radius:12px;
+    color:#0f0;
+    font-size:26px;
+    display:flex; align-items:center; justify-content:center;
+    user-select:none;
   }
-  .touch-btn:active { background:#0f0; color:#000; transform:translateY(2px); }
-  #jump-btn { width:78px; height:78px; font-size:30px; }
+  .touch-btn:active { background:#0f0; color:#000; }
+  #jump-btn { width:76px; height:76px; font-size:32px; }
 </style>
 </head>
 <body>
@@ -51,35 +49,37 @@
     <div>Score <span id="score">0</span></div>
   </div>
 
-  <!-- Mobile Touch Controls -->
   <div id="touch-controls">
-    <div style="display:flex; gap:8px;">
+    <div style="display:flex; gap:10px;">
       <div class="touch-btn" id="left-btn">◀</div>
       <div class="touch-btn" id="right-btn">▶</div>
     </div>
-    <div class="touch-btn" id="jump-btn" style="font-size:34px; margin-right:4px;">▲</div>
+    <div class="touch-btn" id="jump-btn">▲</div>
   </div>
 </div>
 
 <script>
-// ==================== SUPER NAN BROS - MOBILE OPTIMIZED ====================
 const canvas = document.getElementById('game');
-const ctx = canvas.getContext('2d', { alpha: false });
+const ctx = canvas.getContext('2d');
 
-// Use smaller resolution for better mobile performance
-canvas.width = 480;
-canvas.height = 720;
+// Images with fallback
+let playerImgLoaded = false;
+let enemyImgLoaded = false;
 
 const PLAYER_IMG = new Image();
+PLAYER_IMG.onload = () => { playerImgLoaded = true; };
+PLAYER_IMG.onerror = () => { playerImgLoaded = false; };
 PLAYER_IMG.src = '../../assets/nan/enemy.png';
 
 const ENEMY_IMG = new Image();
+ENEMY_IMG.onload = () => { enemyImgLoaded = true; };
+ENEMY_IMG.onerror = () => { enemyImgLoaded = false; };
 ENEMY_IMG.src = '../tower-defense/assets/zac.png';
 
 let audioCtx;
 let musicInterval = null;
 
-let player = { x: 60, y: 500, vx: 0, vy: 0, width: 38, height: 38, onGround: false, facingLeft: false };
+let player = { x: 60, y: 480, vx: 0, vy: 0, width: 36, height: 36, onGround: false, facingLeft: false };
 let cameraX = 0;
 let score = 0;
 let currentLevel = 1;
@@ -88,324 +88,230 @@ let keys = {};
 let coins = [];
 let enemies = [];
 let platforms = [];
-let pits = []; // holes to fall into
+let pits = [];
 
-// Better Mario-like levels with gaps
+// Levels with gaps
 const levels = [
-  // Level 1 - Intro with gaps
   {
     platforms: [
-      {x:0, y:620, w:220, h:100}, {x:280, y:620, w:200, h:100},
-      {x:520, y:620, w:180, h:100}, {x:750, y:620, w:300, h:100},
-      {x:200, y:520, w:70, h:18}, {x:420, y:460, w:80, h:18},
-      {x:620, y:380, w:90, h:18}
+      {x:0, y:620, w:200, h:100}, {x:260, y:620, w:180, h:100},
+      {x:500, y:620, w:200, h:100}, {x:760, y:620, w:280, h:100},
+      {x:180, y:510, w:70, h:18}, {x:400, y:450, w:80, h:18}, {x:620, y:370, w:90, h:18}
     ],
-    pits: [{x:220, w:60}, {x:480, w:40}, {x:700, w:50}],
-    enemies: [{x:320, y:580, range:50}, {x:580, y:580, range:60}],
-    coins: [{x:230, y:480}, {x:450, y:420}, {x:660, y:340}],
+    pits: [{x:200, w:60}, {x:460, w:40}, {x:700, w:60}],
+    enemies: [{x:300, y:580, range:50}, {x:560, y:580, range:55}],
+    coins: [{x:210, y:470}, {x:430, y:410}, {x:660, y:330}],
     goalX: 980
   },
-  // Level 2
   {
     platforms: [
-      {x:0, y:620, w:160, h:100}, {x:220, y:620, w:140, h:100}, {x:400, y:620, w:160, h:100},
-      {x:620, y:620, w:180, h:100}, {x:860, y:620, w:200, h:100},
-      {x:170, y:510, w:60, h:18}, {x:350, y:440, w:70, h:18}, {x:550, y:380, w:80, h:18}, {x:780, y:480, w:60, h:18}
+      {x:0, y:620, w:150, h:100}, {x:200, y:620, w:130, h:100}, {x:380, y:620, w:150, h:100},
+      {x:590, y:620, w:170, h:100}, {x:820, y:620, w:200, h:100},
+      {x:160, y:500, w:55, h:18}, {x:340, y:430, w:65, h:18}, {x:530, y:370, w:70, h:18}
     ],
-    pits: [{x:160, w:60}, {x:360, w:40}, {x:560, w:60}, {x:840, w:20}],
-    enemies: [{x:280, y:580, range:70}, {x:500, y:580, range:50}, {x:720, y:580, range:55}],
-    coins: [{x:190, y:470}, {x:380, y:400}, {x:580, y:340}, {x:800, y:440}],
-    goalX: 1020
-  },
-  // Level 3 - Harder
-  {
-    platforms: [
-      {x:0, y:620, w:130, h:100}, {x:180, y:620, w:110, h:100}, {x:340, y:620, w:130, h:100},
-      {x:520, y:620, w:120, h:100}, {x:700, y:620, w:140, h:100}, {x:900, y:620, w:160, h:100},
-      {x:140, y:510, w:50, h:18}, {x:300, y:430, w:60, h:18}, {x:480, y:360, w:55, h:18}, {x:680, y:470, w:50, h:18}
-    ],
-    pits: [{x:130, w:50}, {x:290, w:50}, {x:460, w:60}, {x:640, w:60}, {x:840, w:60}],
-    enemies: [{x:220, y:580, range:60}, {x:420, y:580, range:45}, {x:620, y:580, range:50}, {x:820, y:580, range:40}],
-    coins: [{x:160, y:470}, {x:320, y:390}, {x:510, y:320}, {x:710, y:430}, {x:920, y:580}],
-    goalX: 1050
+    pits: [{x:150, w:50}, {x:330, w:50}, {x:560, w:30}, {x:760, w:60}],
+    enemies: [{x:260, y:580, range:60}, {x:480, y:580, range:45}, {x:700, y:580, range:50}],
+    coins: [{x:180, y:460}, {x:370, y:390}, {x:560, y:330}, {x:850, y:580}],
+    goalX: 1000
   }
 ];
 
 let currentLevelData = levels[0];
 
-// ==================== AUDIO ====================
 function initAudio() {
-  if (audioCtx) return;
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
 }
 
-function playNote(freq, duration, type = 'square', volume = 0.3) {
+function playSound(freq, duration, type='square', vol=0.3) {
   if (!audioCtx) return;
-  const osc = audioCtx.createOscillator();
-  const gain = audioCtx.createGain();
-  osc.type = type;
-  osc.frequency.value = freq;
-  gain.gain.value = volume;
-  const decay = audioCtx.createGain();
-  decay.gain.value = 1;
-  decay.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-  osc.connect(gain);
-  gain.connect(decay);
-  decay.connect(audioCtx.destination);
-  osc.start();
-  osc.stop(audioCtx.currentTime + duration + 0.05);
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  o.type = type;
+  o.frequency.value = freq;
+  g.gain.value = vol;
+  const d = audioCtx.createGain();
+  d.gain.value = 1;
+  d.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+  o.connect(g); g.connect(d); d.connect(audioCtx.destination);
+  o.start(); o.stop(audioCtx.currentTime + duration + 0.05);
 }
 
 function startMusic() {
   if (musicInterval) clearInterval(musicInterval);
   initAudio();
-  let noteIndex = 0;
-  const melody = [262, 294, 330, 349, 392, 440, 494, 523];
+  let i = 0;
+  const notes = [262,294,330,349,392,440,494,523];
   musicInterval = setInterval(() => {
     if (gameState !== 'playing') return;
-    const freq = melody[noteIndex % melody.length];
-    playNote(freq, 0.16, 'square', 0.22);
-    if (noteIndex % 3 === 0) playNote(freq * 0.5, 0.22, 'sawtooth', 0.12);
-    noteIndex++;
-  }, 160);
+    playSound(notes[i % notes.length], 0.15, 'square', 0.2);
+    if (i % 3 === 0) playSound(notes[i % notes.length] * 0.5, 0.2, 'sawtooth', 0.1);
+    i++;
+  }, 150);
 }
 
-function stopMusic() {
-  if (musicInterval) { clearInterval(musicInterval); musicInterval = null; }
-}
+function stopMusic() { if (musicInterval) { clearInterval(musicInterval); musicInterval = null; } }
 
-// ==================== LEVEL ====================
-function loadLevel(levelNum) {
-  currentLevel = levelNum;
-  currentLevelData = levels[levelNum - 1];
-
-  player.x = 60;
-  player.y = 500;
-  player.vx = 0;
-  player.vy = 0;
-  cameraX = 0;
-
+function loadLevel(n) {
+  currentLevel = n;
+  currentLevelData = levels[n-1];
+  player.x = 60; player.y = 480; player.vx = 0; player.vy = 0; cameraX = 0;
   platforms = currentLevelData.platforms.map(p => ({...p}));
   pits = currentLevelData.pits.map(p => ({...p}));
-
-  enemies = currentLevelData.enemies.map(e => ({
-    x: e.x, y: e.y, width: 32, height: 32,
-    vx: 1.1, startX: e.x, range: e.range, alive: true
-  }));
-
-  coins = currentLevelData.coins.map(c => ({x: c.x, y: c.y, width: 18, height: 18, collected: false}));
+  enemies = currentLevelData.enemies.map(e => ({x:e.x, y:e.y, width:30, height:30, vx:1, startX:e.x, range:e.range, alive:true}));
+  coins = currentLevelData.coins.map(c => ({x:c.x, y:c.y, width:16, height:16, collected:false}));
 }
 
-// ==================== INPUT ====================
+// Input
 window.addEventListener('keydown', e => {
   keys[e.key] = true;
-  if (gameState === 'start' && (e.key === ' ' || e.key === 'Enter')) startGame();
-  if (gameState === 'levelComplete' && e.key === ' ') nextLevel();
+  if ((e.key === ' ' || e.key === 'Enter') && gameState === 'start') startGame();
+  if (e.key === ' ' && gameState === 'levelComplete') nextLevel();
   if ((e.key === 'r' || e.key === 'R') && gameState === 'gameOver') restartGame();
 });
 window.addEventListener('keyup', e => keys[e.key] = false);
 
-function setupTouchControls() {
-  const leftBtn = document.getElementById('left-btn');
-  const rightBtn = document.getElementById('right-btn');
-  const jumpBtn = document.getElementById('jump-btn');
+function setupControls() {
+  const left = document.getElementById('left-btn');
+  const right = document.getElementById('right-btn');
+  const jump = document.getElementById('jump-btn');
 
-  function press(el, key) {
-    el.addEventListener('touchstart', e => { e.preventDefault(); keys[key] = true; if (gameState === 'start') startGame(); });
+  function bind(el, key) {
+    el.addEventListener('touchstart', e => { e.preventDefault(); keys[key] = true; if (gameState==='start') startGame(); });
     el.addEventListener('touchend', e => { e.preventDefault(); keys[key] = false; });
-    el.addEventListener('mousedown', e => { e.preventDefault(); keys[key] = true; if (gameState === 'start') startGame(); });
+    el.addEventListener('mousedown', e => { e.preventDefault(); keys[key] = true; if (gameState==='start') startGame(); });
     el.addEventListener('mouseup', e => { e.preventDefault(); keys[key] = false; });
-    el.addEventListener('mouseleave', e => keys[key] = false; });
+    el.addEventListener('mouseleave', () => keys[key] = false);
   }
 
-  press(leftBtn, 'ArrowLeft');
-  press(rightBtn, 'ArrowRight');
-  press(jumpBtn, ' ');
+  bind(left, 'ArrowLeft');
+  bind(right, 'ArrowRight');
+  bind(jump, ' ');
 
-  // Tap screen to jump when playing
   canvas.addEventListener('touchstart', e => {
     if (gameState === 'playing' && player.onGround) {
-      player.vy = -12.5;
+      player.vy = -12;
       player.onGround = false;
-      playNote(680, 0.08, 'square', 0.4);
+      playSound(700, 0.07);
     }
   });
 }
 
-// ==================== PHYSICS ====================
-function updatePlayer() {
+function update() {
   if (gameState !== 'playing') return;
 
-  const speed = 4.8;
-  const friction = 0.78;
-
+  const speed = 4.5;
   if (keys['ArrowLeft'] || keys['a'] || keys['A']) { player.vx = -speed; player.facingLeft = true; }
   else if (keys['ArrowRight'] || keys['d'] || keys['D']) { player.vx = speed; player.facingLeft = false; }
-  else { player.vx *= friction; }
+  else { player.vx *= 0.8; }
 
   if ((keys[' '] || keys['Space'] || keys['w'] || keys['W']) && player.onGround) {
-    player.vy = -12.5;
+    player.vy = -12;
     player.onGround = false;
-    playNote(680, 0.08, 'square', 0.4);
+    playSound(700, 0.07);
   }
 
-  player.vy += 0.72;
-  if (player.vy > 13) player.vy = 13;
+  player.vy += 0.7;
+  if (player.vy > 12) player.vy = 12;
 
   player.x += player.vx;
   player.y += player.vy;
 
-  // Platform collision
   player.onGround = false;
   for (let p of platforms) {
-    if (player.x < p.x + p.w && player.x + player.width > p.x &&
-        player.y + player.height > p.y && player.y < p.y + p.h) {
-      if (player.vy > 0) {
-        player.y = p.y - player.height;
-        player.vy = 0;
-        player.onGround = true;
-      } else if (player.vy < 0) {
-        player.y = p.y + p.h;
-        player.vy = 0;
-      }
+    if (player.x < p.x + p.w && player.x + player.width > p.x && player.y + player.height > p.y && player.y < p.y + p.h) {
+      if (player.vy > 0) { player.y = p.y - player.height; player.vy = 0; player.onGround = true; }
+      else if (player.vy < 0) { player.y = p.y + p.h; player.vy = 0; }
     }
   }
 
-  // Pit collision (falling into holes)
   for (let pit of pits) {
-    if (player.x + player.width > pit.x && player.x < pit.x + pit.w && player.y > 650) {
-      die();
-    }
+    if (player.x + player.width > pit.x && player.x < pit.x + pit.w && player.y > 650) die();
   }
 
   if (player.x < 0) player.x = 0;
-  if (player.y > 750) die();
-}
+  if (player.y > 780) die();
 
-function updateEnemies() {
-  for (let enemy of enemies) {
-    if (!enemy.alive) continue;
-    enemy.x += enemy.vx;
-    if (enemy.x > enemy.startX + enemy.range || enemy.x < enemy.startX - enemy.range) enemy.vx *= -1;
+  // Enemies
+  for (let en of enemies) {
+    if (!en.alive) continue;
+    en.x += en.vx;
+    if (en.x > en.startX + en.range || en.x < en.startX - en.range) en.vx *= -1;
 
-    if (player.x < enemy.x + enemy.width && player.x + player.width > enemy.x &&
-        player.y < enemy.y + enemy.height && player.y + player.height > enemy.y) {
-      if (player.vy > 0 && player.y + player.height - 8 < enemy.y + 8) {
-        enemy.alive = false;
+    if (player.x < en.x + en.width && player.x + player.width > en.x &&
+        patient.y < en.y + en.height && player.y + player.height > en.y) {
+      if (patient.vy > 0 && player.y + patient.height - 6 < en.y + 6) {
+        en.alive = false;
         player.vy = -9;
-        score += 150;
-        playNote(920, 0.12, 'square', 0.5);
+        score += 120;
       } else {
         die();
       }
     }
   }
-}
 
-function updateCoins() {
-  for (let coin of coins) {
-    if (coin.collected) continue;
-    if (player.x < coin.x + coin.width && player.x + player.width > coin.x &&
-        player.y < coin.y + coin.height && player.y + player.height > coin.y) {
-      coin.collected = true;
-      score += 80;
-      playNote(1250, 0.08, 'square', 0.6);
+  // Coins
+  for (let c of coins) {
+    if (c.collected) continue;
+    if (player.x < c.x + c.width && player.x + player.width > c.x &&
+        patient.y < c.y + c.height && patient.y + player.height > c.y) {
+      c.collected = true;
+      score += 60;
+      playSound(1200, 0.06);
     }
   }
-}
 
-function updateCamera() {
-  cameraX = player.x - 140;
-  if (cameraX < 0) cameraX = 0;
-}
+  cameraX = Math.max(0, player.x - 130);
 
-function checkWin() {
   if (player.x > currentLevelData.goalX) {
     gameState = 'levelComplete';
-    score += 400;
+    score += 300;
     stopMusic();
-    if (currentLevel < levels.length) {
-      document.getElementById('status').textContent = 'Level Complete!';
-    } else {
-      document.getElementById('status').textContent = 'YOU WIN!';
-    }
   }
 }
 
-function die() {
-  gameState = 'gameOver';
-  stopMusic();
-}
-
-// ==================== DRAW (Mario-like style) ====================
 function draw() {
-  // Sky background
-  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-  grad.addColorStop(0, '#5c94fc');
-  grad.addColorStop(1, '#3a6bc4');
-  ctx.fillStyle = grad;
+  // Sky
+  ctx.fillStyle = '#5c94fc';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Simple clouds
-  ctx.fillStyle = '#ffffff';
-  ctx.globalAlpha = 0.6;
-  ctx.beginPath(); ctx.arc(80 - cameraX*0.3, 80, 22, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(110 - cameraX*0.3, 80, 28, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(140 - cameraX*0.3, 75, 18, 0, Math.PI*2); ctx.fill();
-  ctx.globalAlpha = 1;
-
-  // Platforms - Mario brick style
+  // Platforms
   ctx.fillStyle = '#c84c0c';
   for (let p of platforms) {
     ctx.fillRect(p.x - cameraX, p.y, p.w, p.h);
-    // Brick lines
     ctx.strokeStyle = '#8c2f00';
     ctx.lineWidth = 2;
-    for (let i = 0; i < p.w; i += 24) {
-      ctx.beginPath();
-      ctx.rect(p.x - cameraX + i, p.y, 24, p.h);
-      ctx.stroke();
-    }
-    // Top highlight
-    ctx.fillStyle = '#e66c2c';
-    ctx.fillRect(p.x - cameraX, p.y, p.w, 6);
-    ctx.fillStyle = '#c84c0c';
+    ctx.strokeRect(p.x - cameraX, p.y, p.w, p.h);
   }
 
-  // Pits (dark holes)
-  ctx.fillStyle = '#111';
+  // Pits
+  ctx.fillStyle = '#222';
   for (let pit of pits) {
     ctx.fillRect(pit.x - cameraX, 620, pit.w, 100);
   }
 
   // Coins
   ctx.fillStyle = '#ffcc00';
-  for (let coin of coins) {
-    if (!coin.collected) {
+  for (let c of coins) {
+    if (!c.collected) {
       ctx.beginPath();
-      ctx.arc(coin.x - cameraX + 9, coin.y + 9, 8, 0, Math.PI * 2);
+      ctx.arc(c.x - cameraX + 8, c.y + 8, 7, 0, Math.PI*2);
       ctx.fill();
-      ctx.fillStyle = '#ffdd44';
-      ctx.beginPath();
-      ctx.arc(coin.x - cameraX + 9, coin.y + 9, 4, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#ffcc00';
     }
   }
 
   // Enemies
-  for (let enemy of enemies) {
-    if (!enemy.alive) continue;
-    if (ENEMY_IMG.complete) {
-      ctx.drawImage(ENEMY_IMG, enemy.x - cameraX, enemy.y, enemy.width, enemy.height);
+  for (let en of enemies) {
+    if (!en.alive) continue;
+    if (enemyImgLoaded && ENEMY_IMG.complete) {
+      ctx.drawImage(ENEMY_IMG, en.x - cameraX, en.y, en.width, en.height);
     } else {
-      ctx.fillStyle = '#e22';
-      ctx.fillRect(enemy.x - cameraX, enemy.y, enemy.width, enemy.height);
+      ctx.fillStyle = '#e33';
+      ctx.fillRect(en.x - cameraX, en.y, en.width, en.height);
     }
   }
 
   // Player
-  if (PLAYER_IMG.complete) {
+  if (playerImgLoaded && PLAYER_IMG.complete) {
     ctx.save();
     if (player.facingLeft) {
       ctx.translate(player.x - cameraX + player.width, player.y);
@@ -415,56 +321,50 @@ function draw() {
       ctx.drawImage(PLAYER_IMG, player.x - cameraX, player.y, player.width, player.height);
     }
     ctx.restore();
+  } else {
+    ctx.fillStyle = '#4a4';
+    ctx.fillRect(player.x - cameraX, player.y, player.width, player.height);
   }
 
-  // Goal flag
+  // Goal
   ctx.fillStyle = '#0a0';
-  ctx.fillRect(currentLevelData.goalX - cameraX, 540, 42, 80);
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(currentLevelData.goalX - cameraX + 16, 510, 4, 30);
+  ctx.fillRect(currentLevelData.goalX - cameraX, 540, 40, 80);
 
-  // UI overlays
+  // Start screen
   if (gameState === 'start') {
-    ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.fillRect(0, 220, canvas.width, 280);
+    ctx.fillStyle = 'rgba(0,0,0,0.65)';
+    ctx.fillRect(0, 200, canvas.width, 320);
     ctx.fillStyle = '#0f0';
-    ctx.font = 'bold 36px monospace';
-    ctx.fillText('SUPER NAN BROS', 85, 300);
-    ctx.font = '18px monospace';
-    ctx.fillText('Mobile optimized Mario-style', 95, 340);
-    ctx.fillText('Use arrows or on-screen buttons', 80, 375);
-    ctx.fillText('Press SPACE or tap to start', 95, 420);
+    ctx.font = 'bold 32px monospace';
+    ctx.fillText('SUPER NAN BROS', 95, 280);
+    ctx.font = '16px monospace';
+    ctx.fillText('Tap buttons or press SPACE', 105, 330);
+    ctx.fillText('Jump on enemies • Avoid holes', 90, 360);
+    ctx.fillText('Press SPACE or tap to start', 100, 420);
   }
 
   if (gameState === 'levelComplete') {
-    ctx.fillStyle = 'rgba(0,0,0,0.75)';
-    ctx.fillRect(0, 260, canvas.width, 200);
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(0, 240, canvas.width, 240);
     ctx.fillStyle = '#0f0';
-    ctx.font = 'bold 28px monospace';
-    ctx.fillText('LEVEL ' + currentLevel + ' COMPLETE!', 70, 340);
-    ctx.font = '18px monospace';
-    if (currentLevel < levels.length) ctx.fillText('Tap or press SPACE', 130, 390);
+    ctx.font = 'bold 26px monospace';
+    ctx.fillText('LEVEL COMPLETE!', 110, 320);
+    ctx.font = '16px monospace';
+    ctx.fillText('Tap or SPACE for next level', 95, 370);
   }
 
   if (gameState === 'gameOver') {
-    ctx.fillStyle = 'rgba(0,0,0,0.75)';
-    ctx.fillRect(0, 260, canvas.width, 200);
-    ctx.fillStyle = '#f33';
-    ctx.font = 'bold 36px monospace';
-    ctx.fillText('GAME OVER', 130, 340);
-    ctx.font = '18px monospace';
-    ctx.fillText('Press R to restart', 145, 390);
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(0, 240, canvas.width, 240);
+    ctx.fillStyle = '#f44';
+    ctx.font = 'bold 32px monospace';
+    ctx.fillText('GAME OVER', 140, 320);
+    ctx.font = '16px monospace';
+    ctx.fillText('Press R to restart', 150, 370);
   }
 }
 
-// ==================== LOOP ====================
-function update() {
-  if (gameState !== 'playing') return;
-  updatePlayer();
-  updateEnemies();
-  updateCoins();
-  updateCamera();
-  checkWin();
+function updateUI() {
   document.getElementById('level').textContent = currentLevel;
   document.getElementById('score').textContent = score;
 }
@@ -472,6 +372,7 @@ function update() {
 function gameLoop() {
   update();
   draw();
+  updateUI();
   requestAnimationFrame(gameLoop);
 }
 
@@ -497,11 +398,18 @@ function restartGame() {
   stopMusic();
 }
 
+function setupControls() {
+  // already defined above
+}
+
 function boot() {
-  setupTouchControls();
+  setupControls();
   loadLevel(1);
   gameLoop();
+  // Force a draw in case of issues
+  setTimeout(() => { if (gameState === 'start') draw(); }, 200);
 }
+
 boot();
 </script>
 
