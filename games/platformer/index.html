@@ -6,37 +6,69 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
 <style>
   body { margin:0; background:#0a0a0a; color:#fff; font-family: system-ui, monospace; overflow:hidden; touch-action: none; }
-  canvas { display:block; margin:0 auto; border: 4px solid #333; image-rendering: pixelated; background:#1a1a2e; }
-  #ui { position:absolute; top:10px; left:50%; transform:translateX(-50%); background:rgba(0,0,0,0.7); padding:6px 16px; border-radius:8px; font-size:16px; display:flex; gap:20px; align-items:center; z-index:10; }
-  #touch-controls { position:absolute; bottom:10px; left:0; right:0; display:flex; justify-content:space-between; padding:0 15px; z-index:20; }
-  .touch-btn { width:70px; height:70px; background:rgba(255,255,255,0.15); border:3px solid #0f0; border-radius:12px; color:#0f0; font-size:28px; display:flex; align-items:center; justify-content:center; user-select:none; }
-  .touch-btn:active { background:#0f0; color:#000; }
-  #jump-btn { width:90px; }
+  #game-container { position:relative; width:100%; max-width:480px; margin:0 auto; }
+  canvas { 
+    display:block; 
+    width:100% !important; 
+    height:auto !important;
+    border: 4px solid #222; 
+    image-rendering: pixelated; 
+    background:#5c94fc;
+    touch-action: none;
+  }
+  #ui { 
+    position:absolute; top:8px; left:50%; transform:translateX(-50%); 
+    background:rgba(0,0,0,0.65); padding:5px 14px; border-radius:6px; 
+    font-size:14px; display:flex; gap:16px; align-items:center; z-index:10; 
+    white-space:nowrap;
+  }
+  #touch-controls { 
+    position:absolute; bottom:8px; left:0; right:0; 
+    display:flex; justify-content:space-between; 
+    padding:0 12px; z-index:20; pointer-events:none;
+  }
+  .touch-btn { 
+    width:68px; height:68px; 
+    background:rgba(0,0,0,0.5); 
+    border:3px solid #0f0; 
+    border-radius:50%; 
+    color:#0f0; font-size:26px; 
+    display:flex; align-items:center; justify-content:center; 
+    user-select:none; pointer-events:all;
+    box-shadow: 0 4px 0 #003300;
+  }
+  .touch-btn:active { background:#0f0; color:#000; transform:translateY(2px); }
+  #jump-btn { width:78px; height:78px; font-size:30px; }
 </style>
 </head>
 <body>
 
-<canvas id="game" width="800" height="600"></canvas>
+<div id="game-container">
+  <canvas id="game" width="480" height="720"></canvas>
 
-<div id="ui">
-  <div>Level: <span id="level">1</span></div>
-  <div>Score: <span id="score">0</span></div>
-  <div id="status"></div>
-</div>
-
-<!-- Mobile Touch Controls -->
-<div id="touch-controls">
-  <div style="display:flex; gap:10px;">
-    <div class="touch-btn" id="left-btn">◀</div>
-    <div class="touch-btn" id="right-btn">▶</div>
+  <div id="ui">
+    <div>Level <span id="level">1</span></div>
+    <div>Score <span id="score">0</span></div>
   </div>
-  <div class="touch-btn" id="jump-btn" style="font-size:32px;">▲</div>
+
+  <!-- Mobile Touch Controls -->
+  <div id="touch-controls">
+    <div style="display:flex; gap:8px;">
+      <div class="touch-btn" id="left-btn">◀</div>
+      <div class="touch-btn" id="right-btn">▶</div>
+    </div>
+    <div class="touch-btn" id="jump-btn" style="font-size:34px; margin-right:4px;">▲</div>
+  </div>
 </div>
 
 <script>
-// ==================== SUPER NAN BROS - FULL VERSION ====================
+// ==================== SUPER NAN BROS - MOBILE OPTIMIZED ====================
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d', { alpha: false });
+
+// Use smaller resolution for better mobile performance
+canvas.width = 480;
+canvas.height = 720;
 
 const PLAYER_IMG = new Image();
 PLAYER_IMG.src = '../../assets/nan/enemy.png';
@@ -47,8 +79,7 @@ ENEMY_IMG.src = '../tower-defense/assets/zac.png';
 let audioCtx;
 let musicInterval = null;
 
-// Game state
-let player = { x: 80, y: 400, vx: 0, vy: 0, width: 44, height: 44, onGround: false, facingLeft: false };
+let player = { x: 60, y: 500, vx: 0, vy: 0, width: 38, height: 38, onGround: false, facingLeft: false };
 let cameraX = 0;
 let score = 0;
 let currentLevel = 1;
@@ -57,41 +88,52 @@ let keys = {};
 let coins = [];
 let enemies = [];
 let platforms = [];
+let pits = []; // holes to fall into
 
-// Level data
+// Better Mario-like levels with gaps
 const levels = [
+  // Level 1 - Intro with gaps
   {
     platforms: [
-      {x:0, y:520, w:700, h:80}, {x:800, y:520, w:400, h:80}, {x:1300, y:520, w:700, h:80},
-      {x:600, y:420, w:100, h:20}, {x:900, y:350, w:120, h:20}, {x:1150, y:280, w:80, h:20}
+      {x:0, y:620, w:220, h:100}, {x:280, y:620, w:200, h:100},
+      {x:520, y:620, w:180, h:100}, {x:750, y:620, w:300, h:100},
+      {x:200, y:520, w:70, h:18}, {x:420, y:460, w:80, h:18},
+      {x:620, y:380, w:90, h:18}
     ],
-    enemies: [{x:950, y:480, range:80}],
-    coins: [{x:650, y:380}, {x:950, y:310}, {x:1200, y:240}],
-    goalX: 1850
+    pits: [{x:220, w:60}, {x:480, w:40}, {x:700, w:50}],
+    enemies: [{x:320, y:580, range:50}, {x:580, y:580, range:60}],
+    coins: [{x:230, y:480}, {x:450, y:420}, {x:660, y:340}],
+    goalX: 980
   },
+  // Level 2
   {
     platforms: [
-      {x:0, y:520, w:500, h:80}, {x:600, y:520, w:300, h:80}, {x:1000, y:520, w:500, h:80}, {x:1600, y:520, w:600, h:80},
-      {x:550, y:420, w:80, h:20}, {x:850, y:380, w:100, h:20}, {x:1100, y:300, w:90, h:20}, {x:1350, y:420, w:80, h:20}
+      {x:0, y:620, w:160, h:100}, {x:220, y:620, w:140, h:100}, {x:400, y:620, w:160, h:100},
+      {x:620, y:620, w:180, h:100}, {x:860, y:620, w:200, h:100},
+      {x:170, y:510, w:60, h:18}, {x:350, y:440, w:70, h:18}, {x:550, y:380, w:80, h:18}, {x:780, y:480, w:60, h:18}
     ],
-    enemies: [{x:700, y:480, range:100}, {x:1250, y:480, range:70}],
-    coins: [{x:580, y:380}, {x:900, y:340}, {x:1150, y:260}, {x:1400, y:380}],
-    goalX: 2050
+    pits: [{x:160, w:60}, {x:360, w:40}, {x:560, w:60}, {x:840, w:20}],
+    enemies: [{x:280, y:580, range:70}, {x:500, y:580, range:50}, {x:720, y:580, range:55}],
+    coins: [{x:190, y:470}, {x:380, y:400}, {x:580, y:340}, {x:800, y:440}],
+    goalX: 1020
   },
+  // Level 3 - Harder
   {
     platforms: [
-      {x:0, y:520, w:400, h:80}, {x:500, y:520, w:250, h:80}, {x:850, y:520, w:300, h:80}, {x:1250, y:520, w:400, h:80}, {x:1750, y:520, w:500, h:80},
-      {x:450, y:400, w:70, h:20}, {x:780, y:350, w:90, h:20}, {x:1050, y:280, w:70, h:20}, {x:1400, y:380, w:80, h:20}
+      {x:0, y:620, w:130, h:100}, {x:180, y:620, w:110, h:100}, {x:340, y:620, w:130, h:100},
+      {x:520, y:620, w:120, h:100}, {x:700, y:620, w:140, h:100}, {x:900, y:620, w:160, h:100},
+      {x:140, y:510, w:50, h:18}, {x:300, y:430, w:60, h:18}, {x:480, y:360, w:55, h:18}, {x:680, y:470, w:50, h:18}
     ],
-    enemies: [{x:600, y:480, range:90}, {x:1000, y:480, range:60}, {x:1500, y:480, range:80}],
-    coins: [{x:480, y:360}, {x:820, y:310}, {x:1100, y:240}, {x:1450, y:340}, {x:1850, y:480}],
-    goalX: 2150
+    pits: [{x:130, w:50}, {x:290, w:50}, {x:460, w:60}, {x:640, w:60}, {x:840, w:60}],
+    enemies: [{x:220, y:580, range:60}, {x:420, y:580, range:45}, {x:620, y:580, range:50}, {x:820, y:580, range:40}],
+    coins: [{x:160, y:470}, {x:320, y:390}, {x:510, y:320}, {x:710, y:430}, {x:920, y:580}],
+    goalX: 1050
   }
 ];
 
 let currentLevelData = levels[0];
 
-// ==================== AUDIO (Retro Chiptune) ====================
+// ==================== AUDIO ====================
 function initAudio() {
   if (audioCtx) return;
   audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -101,70 +143,57 @@ function playNote(freq, duration, type = 'square', volume = 0.3) {
   if (!audioCtx) return;
   const osc = audioCtx.createOscillator();
   const gain = audioCtx.createGain();
-  const filter = audioCtx.createBiquadFilter();
-
   osc.type = type;
   osc.frequency.value = freq;
-  filter.type = 'lowpass';
-  filter.frequency.value = 1200;
-
   gain.gain.value = volume;
-
   const decay = audioCtx.createGain();
   decay.gain.value = 1;
   decay.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-
-  osc.connect(filter);
-  filter.connect(gain);
+  osc.connect(gain);
   gain.connect(decay);
   decay.connect(audioCtx.destination);
-
   osc.start();
-  osc.stop(audioCtx.currentTime + duration + 0.1);
+  osc.stop(audioCtx.currentTime + duration + 0.05);
 }
 
 function startMusic() {
   if (musicInterval) clearInterval(musicInterval);
   initAudio();
-
   let noteIndex = 0;
   const melody = [262, 294, 330, 349, 392, 440, 494, 523];
-
   musicInterval = setInterval(() => {
     if (gameState !== 'playing') return;
     const freq = melody[noteIndex % melody.length];
-    playNote(freq, 0.18, 'square', 0.25);
-    if (noteIndex % 4 === 0) playNote(freq * 0.5, 0.25, 'sawtooth', 0.15);
+    playNote(freq, 0.16, 'square', 0.22);
+    if (noteIndex % 3 === 0) playNote(freq * 0.5, 0.22, 'sawtooth', 0.12);
     noteIndex++;
-  }, 180);
+  }, 160);
 }
 
 function stopMusic() {
-  if (musicInterval) {
-    clearInterval(musicInterval);
-    musicInterval = null;
-  }
+  if (musicInterval) { clearInterval(musicInterval); musicInterval = null; }
 }
 
-// ==================== LEVEL LOADING ====================
+// ==================== LEVEL ====================
 function loadLevel(levelNum) {
   currentLevel = levelNum;
   currentLevelData = levels[levelNum - 1];
 
-  player.x = 80;
-  player.y = 400;
+  player.x = 60;
+  player.y = 500;
   player.vx = 0;
   player.vy = 0;
   cameraX = 0;
 
   platforms = currentLevelData.platforms.map(p => ({...p}));
+  pits = currentLevelData.pits.map(p => ({...p}));
 
   enemies = currentLevelData.enemies.map(e => ({
-    x: e.x, y: e.y, width: 36, height: 36,
-    vx: 1.2, startX: e.x, range: e.range, alive: true
+    x: e.x, y: e.y, width: 32, height: 32,
+    vx: 1.1, startX: e.x, range: e.range, alive: true
   }));
 
-  coins = currentLevelData.coins.map(c => ({x: c.x, y: c.y, width: 20, height: 20, collected: false}));
+  coins = currentLevelData.coins.map(c => ({x: c.x, y: c.y, width: 18, height: 18, collected: false}));
 }
 
 // ==================== INPUT ====================
@@ -174,70 +203,64 @@ window.addEventListener('keydown', e => {
   if (gameState === 'levelComplete' && e.key === ' ') nextLevel();
   if ((e.key === 'r' || e.key === 'R') && gameState === 'gameOver') restartGame();
 });
-
 window.addEventListener('keyup', e => keys[e.key] = false);
 
-// Touch controls
 function setupTouchControls() {
   const leftBtn = document.getElementById('left-btn');
   const rightBtn = document.getElementById('right-btn');
   const jumpBtn = document.getElementById('jump-btn');
 
-  function addTouch(el, key) {
+  function press(el, key) {
     el.addEventListener('touchstart', e => { e.preventDefault(); keys[key] = true; if (gameState === 'start') startGame(); });
     el.addEventListener('touchend', e => { e.preventDefault(); keys[key] = false; });
     el.addEventListener('mousedown', e => { e.preventDefault(); keys[key] = true; if (gameState === 'start') startGame(); });
     el.addEventListener('mouseup', e => { e.preventDefault(); keys[key] = false; });
-    el.addEventListener('mouseleave', e => { keys[key] = false; });
+    el.addEventListener('mouseleave', e => keys[key] = false; });
   }
 
-  addTouch(leftBtn, 'ArrowLeft');
-  addTouch(rightBtn, 'ArrowRight');
-  addTouch(jumpBtn, ' ');
+  press(leftBtn, 'ArrowLeft');
+  press(rightBtn, 'ArrowRight');
+  press(jumpBtn, ' ');
 
+  // Tap screen to jump when playing
   canvas.addEventListener('touchstart', e => {
     if (gameState === 'playing' && player.onGround) {
-      player.vy = -13.5;
+      player.vy = -12.5;
       player.onGround = false;
+      playNote(680, 0.08, 'square', 0.4);
     }
   });
 }
 
-// ==================== PHYSICS & COLLISION ====================
+// ==================== PHYSICS ====================
 function updatePlayer() {
   if (gameState !== 'playing') return;
 
-  const speed = 5.5;
-  const friction = 0.82;
+  const speed = 4.8;
+  const friction = 0.78;
 
-  if (keys['ArrowLeft'] || keys['a'] || keys['A']) {
-    player.vx = -speed;
-    player.facingLeft = true;
-  } else if (keys['ArrowRight'] || keys['d'] || keys['D']) {
-    player.vx = speed;
-    player.facingLeft = false;
-  } else {
-    player.vx *= friction;
-  }
+  if (keys['ArrowLeft'] || keys['a'] || keys['A']) { player.vx = -speed; player.facingLeft = true; }
+  else if (keys['ArrowRight'] || keys['d'] || keys['D']) { player.vx = speed; player.facingLeft = false; }
+  else { player.vx *= friction; }
 
   if ((keys[' '] || keys['Space'] || keys['w'] || keys['W']) && player.onGround) {
-    player.vy = -13.5;
+    player.vy = -12.5;
     player.onGround = false;
-    playNote(660, 0.1, 'square', 0.4);
+    playNote(680, 0.08, 'square', 0.4);
   }
 
-  player.vy += 0.65;
-  if (player.vy > 14) player.vy = 14;
+  player.vy += 0.72;
+  if (player.vy > 13) player.vy = 13;
 
   player.x += player.vx;
   player.y += player.vy;
 
+  // Platform collision
   player.onGround = false;
   for (let p of platforms) {
     if (player.x < p.x + p.w && player.x + player.width > p.x &&
         player.y + player.height > p.y && player.y < p.y + p.h) {
-
-      if (player.vy > 0 && player.y + player.height - player.vy <= p.y + 5) {
+      if (player.vy > 0) {
         player.y = p.y - player.height;
         player.vy = 0;
         player.onGround = true;
@@ -248,28 +271,30 @@ function updatePlayer() {
     }
   }
 
+  // Pit collision (falling into holes)
+  for (let pit of pits) {
+    if (player.x + player.width > pit.x && player.x < pit.x + pit.w && player.y > 650) {
+      die();
+    }
+  }
+
   if (player.x < 0) player.x = 0;
-  if (player.y > 650) die();
+  if (player.y > 750) die();
 }
 
 function updateEnemies() {
   for (let enemy of enemies) {
     if (!enemy.alive) continue;
-
     enemy.x += enemy.vx;
-
-    if (enemy.x > enemy.startX + enemy.range || enemy.x < enemy.startX - enemy.range) {
-      enemy.vx *= -1;
-    }
+    if (enemy.x > enemy.startX + enemy.range || enemy.x < enemy.startX - enemy.range) enemy.vx *= -1;
 
     if (player.x < enemy.x + enemy.width && player.x + player.width > enemy.x &&
         player.y < enemy.y + enemy.height && player.y + player.height > enemy.y) {
-
-      if (player.vy > 0 && player.y + player.height - 10 < enemy.y + 10) {
+      if (player.vy > 0 && player.y + player.height - 8 < enemy.y + 8) {
         enemy.alive = false;
-        player.vy = -10;
-        score += 200;
-        playNote(880, 0.15, 'square', 0.5);
+        player.vy = -9;
+        score += 150;
+        playNote(920, 0.12, 'square', 0.5);
       } else {
         die();
       }
@@ -283,26 +308,26 @@ function updateCoins() {
     if (player.x < coin.x + coin.width && player.x + player.width > coin.x &&
         player.y < coin.y + coin.height && player.y + player.height > coin.y) {
       coin.collected = true;
-      score += 100;
-      playNote(1200, 0.1, 'square', 0.6);
+      score += 80;
+      playNote(1250, 0.08, 'square', 0.6);
     }
   }
 }
 
 function updateCamera() {
-  cameraX = player.x - canvas.width * 0.35;
+  cameraX = player.x - 140;
   if (cameraX < 0) cameraX = 0;
 }
 
 function checkWin() {
   if (player.x > currentLevelData.goalX) {
     gameState = 'levelComplete';
-    score += 500;
+    score += 400;
     stopMusic();
     if (currentLevel < levels.length) {
-      document.getElementById('status').textContent = 'Level Complete! Press SPACE';
+      document.getElementById('status').textContent = 'Level Complete!';
     } else {
-      document.getElementById('status').textContent = 'YOU WIN! Final Score: ' + score;
+      document.getElementById('status').textContent = 'YOU WIN!';
     }
   }
 }
@@ -310,41 +335,76 @@ function checkWin() {
 function die() {
   gameState = 'gameOver';
   stopMusic();
-  document.getElementById('status').textContent = 'Game Over - Press R to restart';
 }
 
-// ==================== DRAW ====================
+// ==================== DRAW (Mario-like style) ====================
 function draw() {
-  ctx.fillStyle = '#0f0f23';
+  // Sky background
+  const grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+  grad.addColorStop(0, '#5c94fc');
+  grad.addColorStop(1, '#3a6bc4');
+  ctx.fillStyle = grad;
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  ctx.fillStyle = '#4a4a6a';
+  // Simple clouds
+  ctx.fillStyle = '#ffffff';
+  ctx.globalAlpha = 0.6;
+  ctx.beginPath(); ctx.arc(80 - cameraX*0.3, 80, 22, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(110 - cameraX*0.3, 80, 28, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(140 - cameraX*0.3, 75, 18, 0, Math.PI*2); ctx.fill();
+  ctx.globalAlpha = 1;
+
+  // Platforms - Mario brick style
+  ctx.fillStyle = '#c84c0c';
   for (let p of platforms) {
     ctx.fillRect(p.x - cameraX, p.y, p.w, p.h);
-    ctx.fillStyle = '#6a6a8a';
+    // Brick lines
+    ctx.strokeStyle = '#8c2f00';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < p.w; i += 24) {
+      ctx.beginPath();
+      ctx.rect(p.x - cameraX + i, p.y, 24, p.h);
+      ctx.stroke();
+    }
+    // Top highlight
+    ctx.fillStyle = '#e66c2c';
     ctx.fillRect(p.x - cameraX, p.y, p.w, 6);
-    ctx.fillStyle = '#4a4a6a';
+    ctx.fillStyle = '#c84c0c';
   }
 
+  // Pits (dark holes)
+  ctx.fillStyle = '#111';
+  for (let pit of pits) {
+    ctx.fillRect(pit.x - cameraX, 620, pit.w, 100);
+  }
+
+  // Coins
   ctx.fillStyle = '#ffcc00';
   for (let coin of coins) {
     if (!coin.collected) {
       ctx.beginPath();
-      ctx.arc(coin.x - cameraX + 10, coin.y + 10, 9, 0, Math.PI * 2);
+      ctx.arc(coin.x - cameraX + 9, coin.y + 9, 8, 0, Math.PI * 2);
       ctx.fill();
+      ctx.fillStyle = '#ffdd44';
+      ctx.beginPath();
+      ctx.arc(coin.x - cameraX + 9, coin.y + 9, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#ffcc00';
     }
   }
 
+  // Enemies
   for (let enemy of enemies) {
     if (!enemy.alive) continue;
     if (ENEMY_IMG.complete) {
       ctx.drawImage(ENEMY_IMG, enemy.x - cameraX, enemy.y, enemy.width, enemy.height);
     } else {
-      ctx.fillStyle = '#f44';
+      ctx.fillStyle = '#e22';
       ctx.fillRect(enemy.x - cameraX, enemy.y, enemy.width, enemy.height);
     }
   }
 
+  // Player
   if (PLAYER_IMG.complete) {
     ctx.save();
     if (player.facingLeft) {
@@ -357,56 +417,54 @@ function draw() {
     ctx.restore();
   }
 
-  ctx.fillStyle = '#22ff22';
-  ctx.fillRect(currentLevelData.goalX - cameraX, 450, 50, 70);
+  // Goal flag
+  ctx.fillStyle = '#0a0';
+  ctx.fillRect(currentLevelData.goalX - cameraX, 540, 42, 80);
   ctx.fillStyle = '#fff';
-  ctx.fillRect(currentLevelData.goalX - cameraX + 18, 420, 4, 30);
+  ctx.fillRect(currentLevelData.goalX - cameraX + 16, 510, 4, 30);
 
+  // UI overlays
   if (gameState === 'start') {
-    ctx.fillStyle = 'rgba(0,0,0,0.75)';
-    ctx.fillRect(0, 180, canvas.width, 260);
+    ctx.fillStyle = 'rgba(0,0,0,0.7)';
+    ctx.fillRect(0, 220, canvas.width, 280);
     ctx.fillStyle = '#0f0';
-    ctx.font = 'bold 42px monospace';
-    ctx.fillText('SUPER NAN BROS', 210, 260);
-    ctx.font = '22px monospace';
-    ctx.fillText('Arrow Keys / WASD + SPACE to jump', 180, 310);
-    ctx.fillText('Touch controls on mobile', 250, 345);
-    ctx.fillText('Press SPACE or tap to start', 230, 390);
+    ctx.font = 'bold 36px monospace';
+    ctx.fillText('SUPER NAN BROS', 85, 300);
+    ctx.font = '18px monospace';
+    ctx.fillText('Mobile optimized Mario-style', 95, 340);
+    ctx.fillText('Use arrows or on-screen buttons', 80, 375);
+    ctx.fillText('Press SPACE or tap to start', 95, 420);
   }
 
   if (gameState === 'levelComplete') {
-    ctx.fillStyle = 'rgba(0,0,0,0.8)';
-    ctx.fillRect(0, 200, canvas.width, 220);
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillRect(0, 260, canvas.width, 200);
     ctx.fillStyle = '#0f0';
-    ctx.font = 'bold 36px monospace';
-    ctx.fillText('LEVEL ' + currentLevel + ' COMPLETE!', 200, 280);
-    if (currentLevel < levels.length) {
-      ctx.font = '22px monospace';
-      ctx.fillText('Press SPACE for next level', 240, 330);
-    }
+    ctx.font = 'bold 28px monospace';
+    ctx.fillText('LEVEL ' + currentLevel + ' COMPLETE!', 70, 340);
+    ctx.font = '18px monospace';
+    if (currentLevel < levels.length) ctx.fillText('Tap or press SPACE', 130, 390);
   }
 
   if (gameState === 'gameOver') {
-    ctx.fillStyle = 'rgba(0,0,0,0.8)';
-    ctx.fillRect(0, 200, canvas.width, 220);
-    ctx.fillStyle = '#f44';
-    ctx.font = 'bold 48px monospace';
-    ctx.fillText('GAME OVER', 260, 290);
-    ctx.font = '22px monospace';
-    ctx.fillText('Press R to restart', 300, 340);
+    ctx.fillStyle = 'rgba(0,0,0,0.75)';
+    ctx.fillRect(0, 260, canvas.width, 200);
+    ctx.fillStyle = '#f33';
+    ctx.font = 'bold 36px monospace';
+    ctx.fillText('GAME OVER', 130, 340);
+    ctx.font = '18px monospace';
+    ctx.fillText('Press R to restart', 145, 390);
   }
 }
 
-// ==================== MAIN LOOP ====================
+// ==================== LOOP ====================
 function update() {
   if (gameState !== 'playing') return;
-
   updatePlayer();
   updateEnemies();
   updateCoins();
   updateCamera();
   checkWin();
-
   document.getElementById('level').textContent = currentLevel;
   document.getElementById('score').textContent = score;
 }
@@ -417,13 +475,11 @@ function gameLoop() {
   requestAnimationFrame(gameLoop);
 }
 
-// ==================== GAME FLOW ====================
 function startGame() {
   if (gameState !== 'start') return;
   gameState = 'playing';
   loadLevel(1);
   startMusic();
-  document.getElementById('status').textContent = '';
 }
 
 function nextLevel() {
@@ -431,10 +487,6 @@ function nextLevel() {
     loadLevel(currentLevel + 1);
     gameState = 'playing';
     startMusic();
-    document.getElementById('status').textContent = '';
-  } else {
-    gameState = 'win';
-    document.getElementById('status').textContent = 'Congratulations! You beat all levels!';
   }
 }
 
@@ -442,23 +494,14 @@ function restartGame() {
   score = 0;
   loadLevel(1);
   gameState = 'start';
-  document.getElementById('status').textContent = '';
   stopMusic();
 }
 
-// ==================== BOOT ====================
 function boot() {
   setupTouchControls();
   loadLevel(1);
   gameLoop();
-
-  setTimeout(() => {
-    if (gameState === 'start') {
-      document.getElementById('status').textContent = 'Tap or press SPACE';
-    }
-  }, 800);
 }
-
 boot();
 </script>
 
